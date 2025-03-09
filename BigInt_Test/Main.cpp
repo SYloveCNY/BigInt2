@@ -106,7 +106,7 @@ int main() {
     std::cout << "Quyu: " << quyu << std::endl;
 
     BigInteger num;
-    num = 2;
+    num = 5;
     std::cout << num << " 是素数吗? " << (num.isPrime() ? "是" : "否") << std::endl;
 
 	const auto fib_start = std::chrono::steady_clock::now();

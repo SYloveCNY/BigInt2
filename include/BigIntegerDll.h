@@ -16,26 +16,8 @@
 #include <algorithm>
 #include <compare>
 
-class BIGINTEGER_DLL_API BigInteger {
-private:
-    std::vector<int> digits;
-
-    bool isNegative;
-
-    bool isZero() const;
-
-    void removeLeadingZeros();
-
-    auto compare_digits(const BigInteger& other) const;
-
-    BigInteger inner_add(const BigInteger& other) const;
-
-    BigInteger inner_sub(const BigInteger& other) const;
-
-    BigInteger inner_mul(const BigInteger& other) const; 
-
-    std::pair<BigInteger, BigInteger> inner_div(const BigInteger& divisor) const;
-
+class BIGINTEGER_DLL_API BigInteger
+{
 public:
     BigInteger(int num = 0) : isNegative(num < 0) {
         num = std::abs(num);
@@ -47,33 +29,28 @@ public:
     };
 
     auto operator<=>(const BigInteger& other) const;
-
     bool operator==(const BigInteger& other) const;
-
+    bool operator==(int64_t other) const;
     BigInteger operator+(const BigInteger& other) const;
-
     BigInteger operator-(const BigInteger& other) const;
-
     BigInteger operator*(const BigInteger& other) const;
-
     BigInteger operator/(const BigInteger& other) const;
-
     BigInteger operator%(const BigInteger& other) const;
 
-    bool isOne() const;
-
-    bool isTwo() const;
-
-    bool isEven() const;
-
     int getLastDigit() const;
-
     bool isPrime() const;
-
     friend BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& num);
+
+private:
+    bool isZero() const;
+    void removeLeadingZeros();
+    auto compare_digits(const BigInteger& other) const;
+    BigInteger inner_add(const BigInteger& other) const;
+    BigInteger inner_sub(const BigInteger& other) const;
+    BigInteger inner_mul(const BigInteger& other) const;
+    std::pair<BigInteger, BigInteger> inner_div(const BigInteger& divisor) const;
+
+private:
+    std::vector<int> digits;
+    bool isNegative;
 };
-
-
-
-
-

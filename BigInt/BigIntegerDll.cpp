@@ -1,7 +1,5 @@
 #include "BigIntegerDll.h"
 
-
-
 bool BigInteger::isZero() const {
     return digits.size() == 1 && digits[0] == 0;
 }
@@ -179,6 +177,25 @@ bool BigInteger::operator==(const BigInteger& other) const {
     return digits == other.digits;
 }
 
+bool BigInteger::operator==(int64_t other) const {
+    if (isNegative && other >= 0) return false;
+    if (!isNegative && other < 0) return false;
+
+    int64_t absOther = std::abs(other);
+    std::vector<int> otherDigits;
+    while (absOther > 0) {
+        otherDigits.push_back(absOther % 10);
+        absOther /= 10;
+    }
+    if (otherDigits.empty()) otherDigits.push_back(0);
+
+    if (digits.size() != otherDigits.size()) return false;
+    for (size_t i = 0; i < digits.size(); ++i) {
+        if (digits[i] != otherDigits[i]) return false;
+    }
+    return true;
+}
+
 BigInteger BigInteger::operator+(const BigInteger& other) const {
     if (isNegative == other.isNegative) {
         BigInteger result = inner_add(other);
@@ -258,24 +275,13 @@ BigInteger BigInteger::operator%(const BigInteger& other) const {
     return remainder;
 }
 
-bool BigInteger::isOne() const {
-    return digits.size() == 1 && digits[0] == 1;
-}
-
-bool BigInteger::isTwo() const {
-    return digits.size() == 1 && digits[0] == 2;
-}
-
 int BigInteger::getLastDigit() const {
     return digits[0];
 }
 
-bool BigInteger::isPrime() const {
-    if (isNegative || isZero() || isOne()) return false;
-    if (isTwo()) return true;
-
+bool BigInteger::isPrime() const {  
     int lastDigit = getLastDigit();
-    if (lastDigit == 0 || lastDigit == 2 || lastDigit == 4 || lastDigit == 5 || lastDigit == 6 || lastDigit == 8) {
+    if ((lastDigit % 2)== 0 || (lastDigit % 5) == 0) {
         return false;
     }
 
