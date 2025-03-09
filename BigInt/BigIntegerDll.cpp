@@ -1,5 +1,13 @@
 #include "BigIntegerDll.h"
 
+BigInteger::BigInteger(int num ) : isNegative(num < 0) {
+    num = std::abs(num);
+    do {
+        digits.push_back(num % 100);
+        num /= 100;
+    } while (num > 0);
+};
+
 bool BigInteger::isZero() const {
     return digits.size() == 1 && digits[0] == 0;
 }

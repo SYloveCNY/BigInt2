@@ -19,14 +19,7 @@
 class BIGINTEGER_DLL_API BigInteger
 {
 public:
-    BigInteger(int num = 0) : isNegative(num < 0) {
-        num = std::abs(num);
-        do {
-            digits.push_back(num % 100);
-            num /= 100;
-        } while (num > 0);
-    };
-
+    BigInteger(int num = 0);
     auto operator<=>(const BigInteger& other) const;
     bool operator==(const BigInteger& other) const;
     bool operator==(int64_t other) const;
