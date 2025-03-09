@@ -96,14 +96,14 @@ int main() {
     BigInteger diff = num1 - num2;
     std::cout << "Difference: " << diff << std::endl;
 
-    BigInteger cheng = num1 * num2;
-    std::cout << "Cheng: " << cheng << std::endl;
+    BigInteger product = num1 * num2;
+    std::cout << "Product: " << product << std::endl;
 
-    BigInteger chu = num1 / num2;
-    std::cout << "Chu: " << chu << std::endl;
+    BigInteger quotient = num1 / num2;
+    std::cout << "Quotient: " << quotient << std::endl;
 
-    BigInteger quyu = num1 % num2;
-    std::cout << "Quyu: " << quyu << std::endl;
+    BigInteger remainder = num1 % num2;
+    std::cout << "Remainder: " << remainder << std::endl;
 
     BigInteger num;
     num = 5;
