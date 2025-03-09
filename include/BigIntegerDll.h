@@ -25,7 +25,6 @@ public:
             digits.push_back(num % 100);
             num /= 100;
         } while (num > 0);
-        removeLeadingZeros();
     };
 
     auto operator<=>(const BigInteger& other) const;
