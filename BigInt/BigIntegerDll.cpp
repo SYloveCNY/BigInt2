@@ -1,10 +1,10 @@
 #include "BigIntegerDll.h"
 
-BigInteger::BigInteger(int num ) : isNegative(num < 0) {
+BigInteger::BigInteger(int64_t num ) : isNegative(num < 0) {
     num = std::abs(num);
     do {
-        digits.push_back(num % 100);
-        num /= 100;
+        digits.push_back(num % 100000000000000000);
+        num /= 100000000000000000;
     } while (num > 0);
 };
 
@@ -39,13 +39,13 @@ auto BigInteger::compare_digits(const BigInteger& other) const
 BigInteger BigInteger::inner_add(const BigInteger& other) const {
     BigInteger result;
     result.digits.clear();
-    int carry = 0;
+    int64_t carry = 0;
     int maxSize = std::max(digits.size(), other.digits.size());
     for (int i = 0; i < maxSize || carry; ++i) {
         if (i < digits.size()) carry += digits[i];
         if (i < other.digits.size()) carry += other.digits[i];
-        result.digits.push_back(carry % 100);
-        carry /= 100;
+        result.digits.push_back(carry % BASE);
+        carry /= BASE;
     }
     result.removeLeadingZeros();
     return result;
@@ -57,13 +57,13 @@ BigInteger BigInteger::inner_sub(const BigInteger& other) const {
     }
     BigInteger result;
     result.digits.clear();
-    int borrow = 0;
+    int64_t borrow = 0;
     for (int i = 0; i < static_cast<int>(digits.size()); ++i) {
-        int digit1 = digits[i];
-        int digit2 = (i < static_cast<int>(other.digits.size())) ? other.digits[i] : 0;
-        int diff = digit1 - digit2 - borrow;
+        int64_t digit1 = digits[i];
+        int64_t digit2 = (i < static_cast<int>(other.digits.size())) ? other.digits[i] : 0;
+        int64_t diff = digit1 - digit2 - borrow;
         if (diff < 0) {
-            diff += 100;
+            diff += BASE;
             borrow = 1;
         }
         else {
@@ -100,12 +100,12 @@ BigInteger BigInteger::inner_mul(const BigInteger& other) const {
     result.digits.resize(digits.size() + other.digits.size());
 
     for (size_t i = 0; i < digits.size(); ++i) {
-        int carry = 0;
+        int64_t carry = 0;
         for (size_t j = 0; j < other.digits.size() || carry; ++j) {
-            long long cur = result.digits[i + j] +
-                static_cast<long long>(digits[i]) * (j < other.digits.size() ? other.digits[j] : 0) + carry;
-            result.digits[i + j] = static_cast<int>(cur % 100);
-            carry = static_cast<int>(cur / 100);
+            int64_t cur = result.digits[i + j] +
+                static_cast<int64_t>(digits[i]) * (j < other.digits.size() ? other.digits[j] : 0) + carry;
+            result.digits[i + j] = static_cast<int64_t>(cur % BASE);
+            carry = static_cast<int64_t>(cur / BASE);
         }
     }
     result.removeLeadingZeros();
@@ -152,7 +152,7 @@ std::pair<BigInteger, BigInteger> BigInteger::inner_div(const BigInteger& diviso
     for (int i = dividend.digits.size() - 1; i >= 0; --i) {
         remainder.digits.insert(remainder.digits.begin(), dividend.digits[i]);
         remainder.removeLeadingZeros();
-        int q = 0;
+        int64_t q = 0;
         while (remainder.compare_digits(divisor) != std::strong_ordering::less) {
             remainder = remainder - divisor;
             ++q;
@@ -287,7 +287,10 @@ int BigInteger::getLastDigit() const {
     return digits[0];
 }
 
-bool BigInteger::isPrime() const {  
+bool BigInteger::isPrime() const { 
+	if (*this == 2 || *this == 3|| *this == 5) {
+		return true;
+	}
     int lastDigit = getLastDigit();
     if ((lastDigit % 2)== 0 || (lastDigit % 5) == 0) {
         return false;

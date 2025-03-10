@@ -19,7 +19,7 @@
 class BIGINTEGER_DLL_API BigInteger
 {
 public:
-    BigInteger(int num = 0);
+    BigInteger(int64_t num = 0);
     auto operator<=>(const BigInteger& other) const;
     bool operator==(const BigInteger& other) const;
     bool operator==(int64_t other) const;
@@ -43,6 +43,7 @@ private:
     std::pair<BigInteger, BigInteger> inner_div(const BigInteger& divisor) const;
 
 private:
-    std::vector<int> digits;
+    std::vector<int64_t> digits;
     bool isNegative;
+    static const int64_t BASE = 100000000LL;
 };

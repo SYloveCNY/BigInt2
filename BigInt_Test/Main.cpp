@@ -58,7 +58,7 @@ static Matrix matrixPower(const Matrix& matrix, int n) {
     return result;
 }
 
-static BigInteger fibonacci(int n) {
+static BigInteger fibonacci(int64_t n) {
     if (n == 0) return BigInteger(0);
     if (n == 1) return BigInteger(1);
 
@@ -110,7 +110,7 @@ int main() {
     std::cout << num << " 是素数吗? " << (num.isPrime() ? "是" : "否") << std::endl;
 
 	const auto fib_start = std::chrono::steady_clock::now();
-    int n = 10'0000;
+    int n = 100000;
     BigInteger fib = fibonacci(n);
 	const auto fib_end = std::chrono::steady_clock::now();
 	const std::chrono::duration<double> fib_diff = fib_end - fib_start;
@@ -118,7 +118,7 @@ int main() {
     std::cout << "Fibonacci(" << n << ") = " << fib << std::endl;
 
 	const auto fac_start = std::chrono::steady_clock::now();
-    int x = 1000;
+    int x = 100;
     BigInteger fact = factorial(x);
 	const auto fac_end = std::chrono::steady_clock::now();
 	const std::chrono::duration<double> fac_diff = fac_end - fac_start;
