@@ -3,10 +3,10 @@
 BigInteger::BigInteger(int64_t num ) : isNegative(num < 0) {
     num = std::abs(num);
     do {
-        digits.push_back(num % 100000000000000000);
-        num /= 100000000000000000;
+        digits.push_back(num % BASE);
+        num /= BASE;
     } while (num > 0);
-};
+}
 
 bool BigInteger::isZero() const {
     return digits.size() == 1 && digits[0] == 0;
@@ -147,17 +147,26 @@ std::pair<BigInteger, BigInteger> BigInteger::inner_div(const BigInteger& diviso
 
     BigInteger quotient;
     BigInteger remainder;
-    BigInteger dividend = *this;
+    remainder.digits.clear();
 
-    for (int i = dividend.digits.size() - 1; i >= 0; --i) {
-        remainder.digits.insert(remainder.digits.begin(), dividend.digits[i]);
+    for (int i = digits.size() - 1; i >= 0; --i) {
+        remainder.digits.insert(remainder.digits.begin(), digits[i]);
         remainder.removeLeadingZeros();
+        int64_t left = 0, right = BASE - 1;
         int64_t q = 0;
-        while (remainder.compare_digits(divisor) != std::strong_ordering::less) {
-            remainder = remainder - divisor;
-            ++q;
+        while (left <= right) {
+            int64_t mid = (left + right) / 2;
+            BigInteger temp = divisor * mid;
+            if (temp.compare_digits(remainder) != std::strong_ordering::greater) {
+                q = mid;
+                left = mid + 1;
+            }
+            else {
+                right = mid - 1;
+            }
         }
         quotient.digits.insert(quotient.digits.begin(), q);
+        remainder = remainder - divisor * q;
     }
     quotient.removeLeadingZeros();
     return { quotient, remainder };

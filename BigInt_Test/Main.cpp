@@ -72,7 +72,7 @@ static BigInteger fibonacci(int64_t n) {
     return result.data[0][0];
 }
 
-static BigInteger factorial(int n) {
+static BigInteger factorial(int64_t n) {
     if (n < 0) {
         throw std::invalid_argument("Factorial is not defined for negative numbers.");
     }
@@ -84,8 +84,9 @@ static BigInteger factorial(int n) {
 }
 
 int main() {
-    BigInteger num1(987654321);
-    BigInteger num2(123456789);
+    BigInteger num1(9876543210);
+    BigInteger num2(1234567890);
+    BigInteger num3(10);
 
     std::cout << "num1: " << num1 << std::endl;
     std::cout << "num2: " << num2 << std::endl;
@@ -98,6 +99,9 @@ int main() {
 
     BigInteger product = num1 * num2;
     std::cout << "Product: " << product << std::endl;
+
+    BigInteger product2 = num1 * num2 * num3;
+    std::cout << "Product2: " << product2 << std::endl;
 
     BigInteger quotient = num1 / num2;
     std::cout << "Quotient: " << quotient << std::endl;
@@ -118,7 +122,7 @@ int main() {
     std::cout << "Fibonacci(" << n << ") = " << fib << std::endl;
 
 	const auto fac_start = std::chrono::steady_clock::now();
-    int x = 100;
+    int x = 1000;
     BigInteger fact = factorial(x);
 	const auto fac_end = std::chrono::steady_clock::now();
 	const std::chrono::duration<double> fac_diff = fac_end - fac_start;
