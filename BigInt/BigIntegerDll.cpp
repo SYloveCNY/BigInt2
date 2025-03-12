@@ -6,6 +6,7 @@ BigInteger::BigInteger(int64_t num ) : isNegative(num < 0) {
         digits.push_back(num % BASE);
         num /= BASE;
     } while (num > 0);
+    removeLeadingZeros();
 }
 
 bool BigInteger::isZero() const {
@@ -98,6 +99,7 @@ BigInteger BigInteger::inner_mul(const BigInteger& other) const {
     BigInteger result;
     result.digits.clear();
     result.digits.resize(digits.size() + other.digits.size());
+    
 
     for (size_t i = 0; i < digits.size(); ++i) {
         int64_t carry = 0;
@@ -316,11 +318,17 @@ bool BigInteger::isPrime() const {
     return true;
 }
 
+static int DIGIT_WIDTH = 8;
+
 BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& num) {
     if (num.isNegative && !(num.digits.size() == 1 && num.digits[0] == 0)) {
         os << '-';
     }
     for (auto it = num.digits.rbegin(); it != num.digits.rend(); ++it) {
+        if (it != num.digits.rbegin()) {
+            os.width(DIGIT_WIDTH);
+            os.fill('0');
+        }
         os << *it;
     }
     return os;

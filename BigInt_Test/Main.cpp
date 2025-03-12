@@ -86,7 +86,6 @@ static BigInteger factorial(int64_t n) {
 int main() {
     BigInteger num1(9876543210);
     BigInteger num2(1234567890);
-    BigInteger num3(10);
 
     std::cout << "num1: " << num1 << std::endl;
     std::cout << "num2: " << num2 << std::endl;
@@ -99,9 +98,6 @@ int main() {
 
     BigInteger product = num1 * num2;
     std::cout << "Product: " << product << std::endl;
-
-    BigInteger product2 = num1 * num2 * num3;
-    std::cout << "Product2: " << product2 << std::endl;
 
     BigInteger quotient = num1 / num2;
     std::cout << "Quotient: " << quotient << std::endl;

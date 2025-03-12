@@ -33,6 +33,8 @@ public:
     bool isPrime() const;
     friend BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& num);
 
+    
+
 private:
     bool isZero() const;
     void removeLeadingZeros();
@@ -46,4 +48,6 @@ private:
     std::vector<int64_t> digits;
     bool isNegative;
     static const int64_t BASE = 100000000LL;
+    static const int DIGIT_WIDTH;
 };
+ 
