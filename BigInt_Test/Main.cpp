@@ -84,8 +84,8 @@ static BigInteger factorial(int64_t n) {
 }
 
 int main() {
-    BigInteger num1(9876543210);
-    BigInteger num2(1234567890);
+    BigInteger num1(98'7654'3210);
+    BigInteger num2(12'3456'7890);
 
     std::cout << "num1: " << num1 << std::endl;
     std::cout << "num2: " << num2 << std::endl;
@@ -110,7 +110,7 @@ int main() {
     std::cout << num << " 是素数吗? " << (num.isPrime() ? "是" : "否") << std::endl;
 
 	const auto fib_start = std::chrono::steady_clock::now();
-    int n = 100000;
+    int n = 10'0000;
     BigInteger fib = fibonacci(n);
 	const auto fib_end = std::chrono::steady_clock::now();
 	const std::chrono::duration<double> fib_diff = fib_end - fib_start;

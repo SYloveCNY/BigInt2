@@ -1,4 +1,8 @@
+#include <iomanip>
 #include "BigIntegerDll.h"
+
+const int BigInteger::DIGIT_WIDTH = 9;
+const int64_t BigInteger::BASE = 10'0000'0000LL;
 
 BigInteger::BigInteger(int64_t num ) : isNegative(num < 0) {
     num = std::abs(num);
@@ -197,22 +201,24 @@ bool BigInteger::operator==(const BigInteger& other) const {
 }
 
 bool BigInteger::operator==(int64_t other) const {
-    if (isNegative && other >= 0) return false;
-    if (!isNegative && other < 0) return false;
+    bool isNegative2 = other < 0;
+    if (isNegative != isNegative2)
+        return false;
 
-    int64_t absOther = std::abs(other);
-    std::vector<int> otherDigits;
-    while (absOther > 0) {
-        otherDigits.push_back(absOther % 10);
-        absOther /= 10;
-    }
-    if (otherDigits.empty()) otherDigits.push_back(0);
+    int i = 0;
+    int64_t other2 = isNegative2 ? -other : other;
+    std::lldiv_t tmp = std::lldiv(other2, BASE);
+    while (tmp.quot > 0)
+    {
+        if (digits[i] != tmp.rem)
+            return false;
 
-    if (digits.size() != otherDigits.size()) return false;
-    for (size_t i = 0; i < digits.size(); ++i) {
-        if (digits[i] != otherDigits[i]) return false;
+        ++i;
+        tmp = std::lldiv(tmp.quot, BASE);
     }
-    return true;
+
+    return i == digits.size() - 1 && (digits[i] == tmp.rem);
+	return true;
 }
 
 BigInteger BigInteger::operator+(const BigInteger& other) const {
@@ -294,16 +300,21 @@ BigInteger BigInteger::operator%(const BigInteger& other) const {
     return remainder;
 }
 
-int BigInteger::getLastDigit() const {
+int32_t BigInteger::getLastDigit() const {
     return digits[0];
 }
 
 bool BigInteger::isPrime() const { 
-	if (*this == 2 || *this == 3|| *this == 5) {
-		return true;
-	}
-    int lastDigit = getLastDigit();
-    if ((lastDigit % 2)== 0 || (lastDigit % 5) == 0) {
+    BigInteger div;
+    return isPrime(div);
+}
+
+bool BigInteger::isPrime(BigInteger& divisor2) const {
+    if (*this == 2 || *this == 3 || *this == 5) {
+        return true;
+    }
+    int64_t lastDigit = getLastDigit();
+    if ((lastDigit % 2) == 0 || (lastDigit % 5) == 0) {
         return false;
     }
 
@@ -311,6 +322,7 @@ bool BigInteger::isPrime() const {
     BigInteger divisor(3);
     while (divisor * divisor <= limit) {
         if (*this % divisor == BigInteger(0)) {
+            divisor2 = divisor;
             return false;
         }
         divisor = divisor + BigInteger(2);
@@ -318,19 +330,15 @@ bool BigInteger::isPrime() const {
     return true;
 }
 
-static int DIGIT_WIDTH = 8;
-
 BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& num) {
     if (num.isNegative && !(num.digits.size() == 1 && num.digits[0] == 0)) {
         os << '-';
     }
-    for (auto it = num.digits.rbegin(); it != num.digits.rend(); ++it) {
-        if (it != num.digits.rbegin()) {
-            os.width(DIGIT_WIDTH);
-            os.fill('0');
+	auto it = num.digits.rbegin();
+	os << *it;
+	for (++it; it != num.digits.rend(); ++it) {
+		os << std::setw(BigInteger::DIGIT_WIDTH) << std::setfill('0') << *it;
         }
-        os << *it;
-    }
     return os;
 }
 

@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <compare>
+#include <cstdint>
 
 class BIGINTEGER_DLL_API BigInteger
 {
@@ -29,8 +30,9 @@ public:
     BigInteger operator/(const BigInteger& other) const;
     BigInteger operator%(const BigInteger& other) const;
 
-    int getLastDigit() const;
+    int32_t getLastDigit() const;
     bool isPrime() const;
+    bool isPrime(BigInteger& divisor) const;
     friend BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& num);
 
     
@@ -45,9 +47,9 @@ private:
     std::pair<BigInteger, BigInteger> inner_div(const BigInteger& divisor) const;
 
 private:
-    std::vector<int64_t> digits;
+    std::vector<int32_t> digits;
     bool isNegative;
-    static const int64_t BASE = 100000000LL;
+    static const int64_t BASE;
     static const int DIGIT_WIDTH;
 };
  
