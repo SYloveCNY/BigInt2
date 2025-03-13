@@ -43,15 +43,40 @@ auto BigInteger::compare_digits(const BigInteger& other) const
 
 BigInteger BigInteger::inner_add(const BigInteger& other) const {
     BigInteger result;
-    result.digits.clear();
+	result.digits.clear();
+    result.digits.reserve(std::max(digits.size(), other.digits.size()) + 1);
     int64_t carry = 0;
-    int maxSize = std::max(digits.size(), other.digits.size());
-    for (int i = 0; i < maxSize || carry; ++i) {
-        if (i < digits.size()) carry += digits[i];
-        if (i < other.digits.size()) carry += other.digits[i];
+    size_t commonSize = std::min(digits.size(), other.digits.size());
+
+    // 处理共同的位
+    for (size_t i = 0; i < commonSize; ++i) {
+        carry += digits[i] + other.digits[i];
         result.digits.push_back(carry % BASE);
         carry /= BASE;
     }
+
+    // 处理第一个大整数剩余的位
+    if (digits.size() > commonSize) {
+        for (size_t i = commonSize; i < digits.size(); ++i) {
+            carry += digits[i];
+            result.digits.push_back(carry % BASE);
+            carry /= BASE;
+        }
+    }
+    // 处理第二个大整数剩余的位
+    else if (other.digits.size() > commonSize) {
+        for (size_t i = commonSize; i < other.digits.size(); ++i) {
+            carry += other.digits[i];
+            result.digits.push_back(carry % BASE);
+            carry /= BASE;
+        }
+    }
+
+    // 处理最后可能的进位
+    if (carry > 0) {
+        result.digits.push_back(carry);
+    }
+
     result.removeLeadingZeros();
     return result;
 }
