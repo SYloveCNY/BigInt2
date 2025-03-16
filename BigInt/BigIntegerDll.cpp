@@ -1,4 +1,4 @@
-#include <iomanip>
+Ôªø#include <iomanip>
 #include "BigIntegerDll.h"
 
 const int BigInteger::DIGIT_WIDTH = 9;
@@ -48,31 +48,34 @@ BigInteger BigInteger::inner_add(const BigInteger& other) const {
     int64_t carry = 0;
     size_t commonSize = std::min(digits.size(), other.digits.size());
 
-    // ¥¶¿Ìπ≤Õ¨µƒŒª
+    // Â§ÑÁêÜÂÖ±ÂêåÁöÑ‰Ωç
     for (size_t i = 0; i < commonSize; ++i) {
         carry += digits[i] + other.digits[i];
-        result.digits.push_back(carry % BASE);
-        carry /= BASE;
+        std::lldiv_t divResult = std::lldiv(carry, BASE);
+        result.digits.push_back(divResult.rem);
+        carry = divResult.quot;
     }
 
-    // ¥¶¿Ìµ⁄“ª∏ˆ¥Û’˚ ˝ £”‡µƒŒª
+    // Â§ÑÁêÜÁ¨¨‰∏Ä‰∏™Â§ßÊï¥Êï∞Ââ©‰ΩôÁöÑ‰Ωç
     if (digits.size() > commonSize) {
         for (size_t i = commonSize; i < digits.size(); ++i) {
             carry += digits[i];
-            result.digits.push_back(carry % BASE);
-            carry /= BASE;
+            std::lldiv_t divResult = std::lldiv(carry, BASE);
+            result.digits.push_back(divResult.rem);
+            carry = divResult.quot;
         }
     }
-    // ¥¶¿Ìµ⁄∂˛∏ˆ¥Û’˚ ˝ £”‡µƒŒª
+    // Â§ÑÁêÜÁ¨¨‰∫å‰∏™Â§ßÊï¥Êï∞Ââ©‰ΩôÁöÑ‰Ωç
     else if (other.digits.size() > commonSize) {
         for (size_t i = commonSize; i < other.digits.size(); ++i) {
             carry += other.digits[i];
-            result.digits.push_back(carry % BASE);
-            carry /= BASE;
+            std::lldiv_t divResult = std::lldiv(carry, BASE);
+            result.digits.push_back(divResult.rem);
+            carry = divResult.quot;
         }
     }
 
-    // ¥¶¿Ì◊Ó∫Ûø…ƒ‹µƒΩ¯Œª
+    // Â§ÑÁêÜÊúÄÂêéÂèØËÉΩÁöÑËøõ‰Ωç
     if (carry > 0) {
         result.digits.push_back(carry);
     }
@@ -154,39 +157,39 @@ std::pair<BigInteger, BigInteger> BigInteger::inner_div(const BigInteger& diviso
         }
         if (isPowerOfTen && divisor.digits.back() == 1) {
             BigInteger quotient;
-            quotient.digits.clear();
             BigInteger remainder;
-            remainder.digits.clear();
             size_t shift = divisor.digits.size() - 1;
             if (shift >= digits.size()) {
-                quotient = BigInteger(0);
-                remainder = *this;
+                quotient.digits = {0};
+                remainder.digits = digits;
             }
             else {
-                for (size_t i = shift; i < digits.size(); ++i) {
-                    quotient.digits.push_back(digits[i]);
-                }
-                quotient.removeLeadingZeros();
-                for (size_t i = 0; i < shift; ++i) {
-                    remainder.digits.push_back(digits[i]);
-                }
-                remainder.removeLeadingZeros();
+                quotient.digits.assign(digits.begin() + shift, digits.end());
+                remainder.digits.assign(digits.begin(), digits.begin() + shift);
             }
-            return { quotient, remainder };
+                quotient.removeLeadingZeros();
+                remainder.removeLeadingZeros();
+                return { quotient, remainder };
         }
     }
 
     BigInteger quotient;
     BigInteger remainder;
-    remainder.digits.clear();
+    remainder.digits.reserve(digits.size());
 
     for (int i = digits.size() - 1; i >= 0; --i) {
         remainder.digits.insert(remainder.digits.begin(), digits[i]);
         remainder.removeLeadingZeros();
+
+		if (remainder.compare_digits(divisor) == std::strong_ordering::less) {
+			quotient.digits.insert(quotient.digits.begin(), 0);
+			continue;
+		}
+
         int64_t left = 0, right = BASE - 1;
         int64_t q = 0;
         while (left <= right) {
-            int64_t mid = (left + right) / 2;
+            int64_t mid = left + ((right - left) >> 1); // ‰ΩøÁî®‰ΩçËøêÁÆó‰ª£ÊõøÈô§Ê≥ï
             BigInteger temp = divisor * mid;
             if (temp.compare_digits(remainder) != std::strong_ordering::greater) {
                 q = mid;
@@ -331,10 +334,11 @@ int32_t BigInteger::getLastDigit() const {
 
 bool BigInteger::isPrime() const { 
     BigInteger div;
-    return isPrime(div);
+    std::vector<BigInteger> primes = { BigInteger(2), BigInteger(3), BigInteger(5) };
+    return isPrime(div,primes);
 }
 
-bool BigInteger::isPrime(BigInteger& divisor2) const {
+bool BigInteger::isPrime(BigInteger& divisor2, std::vector<BigInteger>& primes) const{
     if (*this == 2 || *this == 3 || *this == 5) {
         return true;
     }
@@ -344,15 +348,16 @@ bool BigInteger::isPrime(BigInteger& divisor2) const {
     }
 
     BigInteger limit = *this;
-    BigInteger divisor(3);
-    while (divisor * divisor <= limit) {
-        if (*this % divisor == BigInteger(0)) {
-            divisor2 = divisor;
+    for (const auto& prime : primes) {
+        if (prime * prime > limit) {
+            break;
+        }
+        if (*this % prime == BigInteger(0)) {
+            divisor2 = prime;
             return false;
         }
-        divisor = divisor + BigInteger(2);
+        return true;
     }
-    return true;
 }
 
 BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& num) {

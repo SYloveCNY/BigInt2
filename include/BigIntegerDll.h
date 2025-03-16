@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifdef _MSC_VER
 #ifdef BIGINTEGER_DLL_EXPORTS
 #define BIGINTEGER_DLL_API __declspec(dllexport)
@@ -16,6 +16,8 @@
 #include <algorithm>
 #include <compare>
 #include <cstdint>
+#include <cstdlib>
+#include <ctime>
 
 class BIGINTEGER_DLL_API BigInteger
 {
@@ -31,8 +33,10 @@ public:
     BigInteger operator%(const BigInteger& other) const;
 
     int32_t getLastDigit() const;
+	BigInteger modPow(const BigInteger& exponent, const BigInteger& modulus) const;
     bool isPrime() const;
-    bool isPrime(BigInteger& divisor) const;
+    bool isPrime(BigInteger& divisor2, std::vector<BigInteger>& primes) const;
+	bool isPrimeMillerRabin(int k = 5) const;
     friend BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& num);
 
     
