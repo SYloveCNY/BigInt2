@@ -3,7 +3,7 @@
 
 const int BigInteger::DIGIT_WIDTH = 9;
 const int64_t BigInteger::BASE = 10'0000'0000LL;
-const std::vector<BigInteger> BigInteger::precomputedPrimes = { BigInteger(2), BigInteger(3), BigInteger(5) };
+const std::vector<BigInteger> BigInteger::precomputedPrimes = { BigInteger(3), BigInteger(7), BigInteger(11) };
 
 BigInteger::BigInteger(int64_t num ) : isNegative(num < 0) {
     num = std::abs(num);
@@ -365,25 +365,25 @@ bool BigInteger::isPrime(BigInteger& divisor2, std::vector<BigInteger>& primes) 
         }
     }
     BigInteger nextToCheck = primes.empty() ? BigInteger(3) : primes.back() + BigInteger(2);
-    while (nextToCheck * nextToCheck <= *this) {
-        bool isPrime = true;
-        for (const auto& prime : primes) {
-            if (prime * prime > nextToCheck) {
-                break;
+        while (nextToCheck * nextToCheck <= *this) {
+            bool isPrime = true;
+            for (const auto& prime : primes) {
+                if (prime * prime > nextToCheck) {
+                    break;
+                }
+                if (nextToCheck % prime == BigInteger(0)) {
+                    isPrime = false;
+                    break;
+                }
             }
-            if (nextToCheck % prime == BigInteger(0)) {
-                isPrime = false;
-                break;
+            if (isPrime) {
+                primes.push_back(nextToCheck);
+                if (*this % nextToCheck == BigInteger(0)) {
+                    return false;
+                }
             }
+            nextToCheck = nextToCheck + BigInteger(2);
         }
-        if (isPrime) {
-            primes.push_back(nextToCheck);
-            if (*this % nextToCheck == BigInteger(0)) {
-                return false;
-            }
-        }
-        nextToCheck = nextToCheck + BigInteger(2);
-    }
     return true;
 }
 
