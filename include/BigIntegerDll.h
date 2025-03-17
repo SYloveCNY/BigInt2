@@ -49,11 +49,13 @@ private:
     BigInteger inner_sub(const BigInteger& other) const;
     BigInteger inner_mul(const BigInteger& other) const;
     std::pair<BigInteger, BigInteger> inner_div(const BigInteger& divisor) const;
+    bool isLastDigitDivisibleBy2Or5() const;
 
 private:
     std::vector<int32_t> digits;
     bool isNegative;
     static const int64_t BASE;
     static const int DIGIT_WIDTH;
+    static const std::vector<BigInteger> precomputedPrimes;
 };
  

@@ -106,7 +106,7 @@ int main() {
     std::cout << "Remainder: " << remainder << std::endl;
 
     const auto pri_start = std::chrono::steady_clock::now();
-    BigInteger num = fibonacci(1'0006);
+    BigInteger num = fibonacci(10006);
     std::cout << num << " 是素数吗? " << (num.isPrime() ? "是" : "否") << std::endl;
     const auto pri_end = std::chrono::steady_clock::now();
     const std::chrono::duration<double> pri_diff = pri_end - pri_start;
@@ -129,7 +129,7 @@ int main() {
 
 	std::cout << "计算 fib(" << n << "), 耗时: " << fib_diff << std::endl;
 	std::cout << "计算 " << x << "!, 耗时: " << fac_diff << std::endl;
-    std::cout << "计算 fib" << x << "是素数吗？ 耗时: " << pri_diff << std::endl;
+    std::cout << "计算 " << num << "是素数吗？ 耗时: " << pri_diff << std::endl;
     std::cin.get();
 
     return 0;

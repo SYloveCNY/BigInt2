@@ -3,6 +3,7 @@
 
 const int BigInteger::DIGIT_WIDTH = 9;
 const int64_t BigInteger::BASE = 10'0000'0000LL;
+const std::vector<BigInteger> BigInteger::precomputedPrimes = { BigInteger(2), BigInteger(3), BigInteger(5) };
 
 BigInteger::BigInteger(int64_t num ) : isNegative(num < 0) {
     num = std::abs(num);
@@ -332,21 +333,27 @@ int32_t BigInteger::getLastDigit() const {
     return digits[0];
 }
 
+bool BigInteger::isLastDigitDivisibleBy2Or5() const {
+    int64_t lastDigit = getLastDigit();
+    return (lastDigit % 2) == 0 || (lastDigit % 5) == 0;
+}
+
 bool BigInteger::isPrime() const { 
     BigInteger div;
-    std::vector<BigInteger> primes = { BigInteger(2), BigInteger(3), BigInteger(5) };
+    std::vector<BigInteger> primes = precomputedPrimes;
     return isPrime(div,primes);
 }
 
 bool BigInteger::isPrime(BigInteger& divisor2, std::vector<BigInteger>& primes) const{
+    if (*this < 2) {
+        return false;
+    }
     if (*this == 2 || *this == 3 || *this == 5) {
         return true;
     }
-    int64_t lastDigit = getLastDigit();
-    if ((lastDigit % 2) == 0 || (lastDigit % 5) == 0) {
+    if (isLastDigitDivisibleBy2Or5()) {
         return false;
     }
-
     BigInteger limit = *this;
     for (const auto& prime : primes) {
         if (prime * prime > limit) {
@@ -356,8 +363,28 @@ bool BigInteger::isPrime(BigInteger& divisor2, std::vector<BigInteger>& primes) 
             divisor2 = prime;
             return false;
         }
-        return true;
     }
+    BigInteger nextToCheck = primes.empty() ? BigInteger(3) : primes.back() + BigInteger(2);
+    while (nextToCheck * nextToCheck <= *this) {
+        bool isPrime = true;
+        for (const auto& prime : primes) {
+            if (prime * prime > nextToCheck) {
+                break;
+            }
+            if (nextToCheck % prime == BigInteger(0)) {
+                isPrime = false;
+                break;
+            }
+        }
+        if (isPrime) {
+            primes.push_back(nextToCheck);
+            if (*this % nextToCheck == BigInteger(0)) {
+                return false;
+            }
+        }
+        nextToCheck = nextToCheck + BigInteger(2);
+    }
+    return true;
 }
 
 BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& num) {
