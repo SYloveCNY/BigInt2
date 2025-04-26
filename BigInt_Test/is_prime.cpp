@@ -15,9 +15,9 @@ size_t prime_count = 0;
 HANDLE hMapFile = NULL;
 
 // 读取素数文件
-bool readPrimesFromFile() {
+static bool readPrimesFromFile() {
 	// 打开文件
-	HANDLE hFile = CreateFile("primes.txt", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE hFile = CreateFile("primes.dat", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (hFile == INVALID_HANDLE_VALUE) {
 		DWORD errorCode = GetLastError();
 		std::cerr << "Failed to open file. Error code: " << errorCode << std::endl;
@@ -57,13 +57,10 @@ bool readPrimesFromFile() {
 	// 关闭文件句柄
 	CloseHandle(hFile);
 
-	
-
-
 	return true;
 }
 
-bool is_prime(uint64_t value, uint64_t& divisor) noexcept
+static bool is_prime(uint64_t value, uint64_t& divisor) noexcept
 {
 	if (value == 2 || value == 3 || value == 5)
 		return true;
@@ -127,10 +124,12 @@ bool is_prime(uint64_t value, uint64_t& divisor) noexcept
 
 int main(int argc, char* argv[])
 {
+	
+
 	if (!readPrimesFromFile()) {
 		return 1;
 	}
-
+	std::cout << s_primes[0] << ',' << s_primes[1] << ',' << s_primes[2] << std::endl;
 	uint64_t value = std::numeric_limits<uint64_t>::max();
 	value -= 14;
 

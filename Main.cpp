@@ -1,304 +1,66 @@
-#include <iostream>
-#include <vector>
-#include <string>
-#include <stdexcept>
-#include <algorithm>
-#include <compare>
+﻿//#define BIGINTEGER_DLL_EXPORTS
+#include "PrimesFile.h"
+#include <chrono>
+extern __declspec(dllimport) uint32_t* s_primes;
+extern __declspec(dllimport) size_t prime_count;
 
-class BigInteger {
-private:
-    std::vector<int> digits;
-    bool isNegative;
-
-    void removeLeadingZeros() {
-        while (digits.size() > 1 && digits.back() == 0) {
-            digits.pop_back();
-        }
-    }
-
-    auto compare_digits(const BigInteger& other) const
-    {
-        if (digits.size() < other.digits.size())
-            return std::strong_ordering::less;
-        else if (digits.size() > other.digits.size())
-            return std::strong_ordering::greater;
-
-        for (int i = digits.size() - 1; i >= 0; --i)
-        {
-            if (digits[i] < other.digits[i])
-                return std::strong_ordering::less;
-            else if (digits[i] > other.digits[i])
-                return std::strong_ordering::greater;
-        }
-
-        return std::strong_ordering::equal;
-    }
-
-    BigInteger inner_add(const BigInteger& other) const {
-        BigInteger result;
-        result.digits.clear();
-        int carry = 0;
-        int maxSize = std::max(digits.size(), other.digits.size());
-        for (int i = 0; i < maxSize || carry; ++i) {
-            if (i < digits.size()) carry += digits[i];
-            if (i < other.digits.size()) carry += other.digits[i];
-            result.digits.push_back(carry % 10);
-            carry /= 10;
-        }
-        result.removeLeadingZeros();
-        return result;
-    }
-
-    BigInteger inner_sub(const BigInteger& other) const {
-        if (compare_digits(other) == std::strong_ordering::less) {
-            return other.inner_sub(*this);
-        }
-        BigInteger result;
-        result.digits.clear();
-        int borrow = 0;
-        for (int i = 0; i < static_cast<int>(digits.size()); ++i) {
-            int digit1 = digits[i];
-            int digit2 = (i < static_cast<int>(other.digits.size())) ? other.digits[i] : 0;
-            int diff = digit1 - digit2 - borrow;
-            if (diff < 0) {
-                diff += 10;
-                borrow = 1;
-            }
-            else {
-                borrow = 0;
-            }
-            result.digits.push_back(diff);
-        }
-        result.removeLeadingZeros();
-        return result;
-
-    }
-
-    BigInteger inner_mul(const BigInteger& other) const {
-        if (other.digits.size() > 1) {
-            bool isPowerOfTen = true;
-            for (size_t i = 0; i < other.digits.size() - 1; ++i) {
-                if (other.digits[i] != 0) {
-                    isPowerOfTen = false;
-                    break;
-                }
-            }
-            if (isPowerOfTen && other.digits.back() == 1) {
-                BigInteger result = *this;
-                for (size_t i = 0; i < other.digits.size() - 1; ++i) {
-                    result.digits.insert(result.digits.begin(), 0);
-                }
-                result.removeLeadingZeros();
-                return result;
-            }
-        }
-
-        BigInteger result;
-        result.digits.clear();
-        result.digits.resize(digits.size() + other.digits.size());
-
-        for (size_t i = 0; i < digits.size(); ++i) {
-            int carry = 0;
-            for (size_t j = 0; j < other.digits.size() || carry; ++j) {
-                long long cur = result.digits[i + j] +
-                    static_cast<long long>(digits[i]) * (j < other.digits.size() ? other.digits[j] : 0) + carry;
-                result.digits[i + j] = static_cast<int>(cur % 10);
-                carry = static_cast<int>(cur / 10);
-            }
-        }
-        result.removeLeadingZeros();
-        return result;
-    }
-
-    std::pair<BigInteger, BigInteger> inner_div(const BigInteger& divisor) const {
-        if (divisor.digits.size() > 1) {
-            bool isPowerOfTen = true;
-            for (size_t i = 0; i < divisor.digits.size() - 1; ++i) {
-                if (divisor.digits[i] != 0) {
-                    isPowerOfTen = false;
-                    break;
-                }
-            }
-            if (isPowerOfTen && divisor.digits.back() == 1) {
-                BigInteger quotient;
-                quotient.digits.clear();
-                BigInteger remainder;
-                remainder.digits.clear();
-                size_t shift = divisor.digits.size() - 1;
-                if (shift >= digits.size()) {
-                    quotient = BigInteger(0);
-                    remainder = *this;
-                }
-                else {
-                    for (size_t i = shift; i < digits.size(); ++i) {
-                        quotient.digits.push_back(digits[i]);
-                    }
-                    quotient.removeLeadingZeros();
-                    for (size_t i = 0; i < shift; ++i) {
-                        remainder.digits.push_back(digits[i]);
-                    }
-                    remainder.removeLeadingZeros();
-                }
-                return { quotient, remainder };
-            }
-        }
-
-        BigInteger quotient;
-        BigInteger remainder;
-        BigInteger dividend = *this;
-
-        for (int i = dividend.digits.size() - 1; i >= 0; --i) {
-            remainder.digits.insert(remainder.digits.begin(), dividend.digits[i]);
-            remainder.removeLeadingZeros();
-            int q = 0;
-            while (remainder.compare_digits(divisor) != std::strong_ordering::less) {
-                remainder = remainder - divisor;
-                ++q;
-            }
-            quotient.digits.insert(quotient.digits.begin(), q);
-        }
-        quotient.removeLeadingZeros();
-        return { quotient, remainder };
-    }
-
-
+class Matrix {
 public:
-    BigInteger(int num = 0) : isNegative(num < 0) {
-        num = std::abs(num);
-        do {
-            digits.push_back(num % 10);
-            num /= 10;
-        } while (num > 0);
-        removeLeadingZeros();
-    }
+    BigInteger data[2][2];
 
-    auto operator<=>(const BigInteger& other) const
-    {
-        if (isNegative != other.isNegative)
-        {
-            return isNegative ? std::strong_ordering::less : std::strong_ordering::greater;
-        }
-
-        auto ret = compare_digits(other);
-        if (isNegative && ret != std::strong_ordering::equal)
-        {
-            ret = (ret == std::strong_ordering::less)
-                ? std::strong_ordering::greater
-                : std::strong_ordering::less;
-        }
-
-        return ret;
-    }
-
-    bool operator==(const BigInteger& other) const {
-        return digits == other.digits;
-    }
-
-    BigInteger operator+(const BigInteger& other) const {
-        if (isNegative == other.isNegative) {
-            BigInteger result = inner_add(other);
-            result.isNegative = isNegative;
-            return result;
-        }
-        else {
-            if (isNegative) {
-                BigInteger temp = *this;
-                temp.isNegative = false;
-                return other - temp;
-            }
-            else {
-                BigInteger temp = other;
-                temp.isNegative = false;
-                return *this - temp;
+    Matrix() {
+        for (int i = 0; i < 2; ++i) {
+            for (int j = 0; j < 2; ++j) {
+                data[i][j] = BigInteger(0);
             }
         }
     }
 
-    BigInteger operator-(const BigInteger& other) const {
-        if (isNegative == other.isNegative) {
-            if (compare_digits(other) == std::strong_ordering::less) {
-                BigInteger result = other.inner_sub(*this);
-                result.isNegative = !isNegative;
-                return result;
-            }
-            BigInteger result = inner_sub(other);
-            result.isNegative = isNegative;
-            return result;
-        }
-        else {
-            if (isNegative) {
-                BigInteger temp = *this;
-                temp.isNegative = false;
-                BigInteger result = temp + other;
-                result.isNegative = true;
-                return result;
-            }
-            else {
-                BigInteger temp = other;
-                temp.isNegative = false;
-                return *this + temp;
+    // 矩阵乘法
+    Matrix operator*(const Matrix& other) const {
+        Matrix result;
+        for (int i = 0; i < 2; ++i) {
+            for (int j = 0; j < 2; ++j) {
+                for (int k = 0; k < 2; ++k) {
+                    result.data[i][j] = result.data[i][j] + data[i][k] * other.data[k][j];
+                }
             }
         }
-    }
-
-    BigInteger operator*(const BigInteger& other) const {
-        BigInteger result = inner_mul(other);
-        result.isNegative = isNegative != other.isNegative;
         return result;
-    }
-
-    BigInteger operator/(const BigInteger& other) const {
-        if (other.digits.size() == 1 && other.digits[0] == 0) {
-            throw std::invalid_argument("Division by zero");
-        }
-        BigInteger absDividend = *this;
-        absDividend.isNegative = false;
-        BigInteger absDivisor = other;
-        absDivisor.isNegative = false;
-        auto [quotient, _] = absDividend.inner_div(absDivisor);
-        quotient.isNegative = isNegative != other.isNegative;
-        return quotient;
-    }
-
-    BigInteger operator%(const BigInteger& other) const {
-        if (other.digits.size() == 1 && other.digits[0] == 0) {
-            throw std::invalid_argument("Modulo by zero");
-        }
-        BigInteger absDividend = *this;
-        absDividend.isNegative = false;
-        BigInteger absDivisor = other;
-        absDivisor.isNegative = false;
-        auto [_, remainder] = absDividend.inner_div(absDivisor);
-        remainder.isNegative = isNegative;
-        return remainder;
-    }
-
-    friend std::ostream& operator<<(std::ostream& os, const BigInteger& num) {
-        if (num.isNegative && !(num.digits.size() == 1 && num.digits[0] == 0)) {
-            os << '-';
-        }
-        for (auto it = num.digits.rbegin(); it != num.digits.rend(); ++it) {
-            os << *it;
-        }
-        return os;
     }
 };
 
-BigInteger fibonacci(int n) {
-    if (n == 0) return BigInteger(0);
-    if (n == 1) return BigInteger(1);
-    BigInteger a(0);
-    BigInteger b(1);
-    BigInteger result;
-    for (int i = 2; i <= n; ++i) {
-        result = a + b;
-        a = b;
-        b = result;
+// 矩阵快速幂
+static Matrix matrixPower(const Matrix& matrix, int n) {
+    Matrix result;
+    result.data[0][0] = BigInteger(1);
+    result.data[1][1] = BigInteger(1);
+    Matrix temp = matrix;
+    while (n > 0) {
+        if (n & 1) {
+            result = result * temp;
+        }
+        temp = temp * temp;
+        n >>= 1;
     }
     return result;
 }
 
-BigInteger factorial(int n) {
+static BigInteger fibonacci(int64_t n) {
+    if (n == 0) return BigInteger(0);
+    if (n == 1) return BigInteger(1);
+
+    Matrix base;
+    base.data[0][0] = BigInteger(1);
+    base.data[0][1] = BigInteger(1);
+    base.data[1][0] = BigInteger(1);
+    base.data[1][1] = BigInteger(0);
+
+    Matrix result = matrixPower(base, n - 1);
+    return result.data[0][0];
+}
+
+static BigInteger factorial(int64_t n) {
     if (n < 0) {
         throw std::invalid_argument("Factorial is not defined for negative numbers.");
     }
@@ -309,10 +71,32 @@ BigInteger factorial(int n) {
     return result;
 }
 
+BigInteger bigIntInstance; // 创建一个 BigInteger 实例
+
+PrimesFile primesFileInstance; // 创建一个 PrimesFile 实例
 
 int main() {
-    BigInteger num1(987654321);
-    BigInteger num2(123456789);
+
+    if (!primesFileInstance.readPrimesFromFile()) { // 使用实例调用非静态成员函数
+        return 1;
+    }
+
+    //     std::cout << s_primes[0] << ',' << s_primes[1] << ',' << s_primes[2] << std::endl;
+
+    BigInteger value = std::numeric_limits<uint64_t>::max();
+    value = value - 14;
+
+    BigInteger divisor = 0;
+    bool ret = bigIntInstance.isPrime(value, divisor); // 使用实例调用非静态成员函数
+    if (ret)
+        std::cout << value << ", 是素数。" << std::endl;
+    else
+        std::cout << value << ", 可以被 " << divisor << " 整除。" << std::endl;
+
+    //    std::cout << BigInteger::s_primes[0] << ',' << BigInteger::s_primes[1] << ',' << BigInteger::s_primes[2] << std::endl;
+
+    BigInteger num1(98'7654'3210);
+    BigInteger num2(12'3456'7890);
 
     std::cout << "num1: " << num1 << std::endl;
     std::cout << "num2: " << num2 << std::endl;
@@ -323,22 +107,35 @@ int main() {
     BigInteger diff = num1 - num2;
     std::cout << "Difference: " << diff << std::endl;
 
-    BigInteger cheng = num1 * num2;
-    std::cout << "Cheng: " << cheng << std::endl;
+    BigInteger product = num1 * num2;
+    std::cout << "Product: " << product << std::endl;
 
-    BigInteger chu = num1 / num2;
-    std::cout << "Chu: " << chu << std::endl;
+    BigInteger quotient = num1 / num2;
+    std::cout << "Quotient: " << quotient << std::endl;
 
-    BigInteger quyu = num1 % num2;
-    std::cout << "Quyu: " << quyu << std::endl;
+    BigInteger remainder = num1 % num2;
+    std::cout << "Remainder: " << remainder << std::endl;
 
-    int n = 100;
+    const auto fib_start = std::chrono::steady_clock::now();
+    int n = 10'0000;
     BigInteger fib = fibonacci(n);
+    const auto fib_end = std::chrono::steady_clock::now();
+    const std::chrono::duration<double> fib_diff = fib_end - fib_start;
+
     std::cout << "Fibonacci(" << n << ") = " << fib << std::endl;
 
-    int x = 20;
+    const auto fac_start = std::chrono::steady_clock::now();
+    int x = 1000;
     BigInteger fact = factorial(x);
+    const auto fac_end = std::chrono::steady_clock::now();
+    const std::chrono::duration<double> fac_diff = fac_end - fac_start;
+
     std::cout << x << "! = " << fact << std::endl;
+
+    std::cout << "计算 fib(" << n << "), 耗时: " << fib_diff << std::endl;
+    std::cout << "计算 " << x << "!, 耗时: " << fac_diff << std::endl;
+
+    std::cin.get();
 
     return 0;
 }

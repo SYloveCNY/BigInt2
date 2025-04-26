@@ -1,27 +1,35 @@
-﻿#include <iomanip>
-#include "BigIntegerDll.h"
+﻿ #include "BigInteger.h"
 
-const int BigInteger::DIGIT_WIDTH = 9;
 const int64_t BigInteger::BASE = 10'0000'0000LL;
+const int BigInteger::DIGIT_WIDTH = 9;
 const int BigInteger::PRECOMPUTED_PRIME_COUNT = 3;
 BigInteger BigInteger::precomputedPrimes[PRECOMPUTED_PRIME_COUNT] = {
        BigInteger(3),
        BigInteger(7),
        BigInteger(11)
 };
-// 全局变量用于存储从文件中读取的素数
-uint32_t* s_primes = nullptr;
-size_t prime_count = 0;
-// 全局变量用于存储文件映射对象句柄
-HANDLE hMapFile = NULL;
+uint32_t* BigInteger::s_primes = nullptr;
+size_t BigInteger::prime_count = 0;
+MemoryMapFile BigInteger::s_mem_file;
 
-BigInteger::BigInteger(int64_t num ) : isNegative(num < 0) {
-    num = std::abs(num);
+BigInteger::BigInteger(uint64_t num ) : isNegative(num < 0) {
     do {
         digits.push_back(num % BASE);
         num /= BASE;
     } while (num > 0);
     removeLeadingZeros();
+}
+
+int BigInteger::compareAbs(const BigInteger& other) const {
+    if (digits.size() != other.digits.size()) {
+        return static_cast<int>(digits.size()) - static_cast<int>(other.digits.size());
+    }
+    for (int i = digits.size() - 1; i >= 0; --i) {
+        if (digits[i] != other.digits[i]) {
+            return digits[i] - other.digits[i];
+        }
+    }
+    return 0;
 }
 
 bool BigInteger::isZero() const {
@@ -43,8 +51,8 @@ int32_t BigInteger::digitSum() const {
     for (int32_t digit : digits) {
         int32_t temp = digit;
         while (temp > 0) {
-            sum += temp % 10;
-            temp /= 10;
+            sum += temp % BASE;
+            temp /= BASE;
         }
     }
     return sum;
@@ -56,7 +64,7 @@ bool BigInteger::isLastDigitDivisibleBy2Or5() const {
     return lastDigit % 2 == 0 || lastDigit % 5 == 0;
 }
 
-bool BigInteger::isSpecialCase() const {
+bool BigInteger::isSpecialCase(BigInteger& divisor) const {
     if (*this < 2) {
         return false;
     }
@@ -64,9 +72,14 @@ bool BigInteger::isSpecialCase() const {
         return true;
     }
     if (isLastDigitDivisibleBy2Or5()) {
+        divisor = 2;
+        if (*this % 5 == 0) {
+            divisor = 5;
+        }
         return false;
     }
     if (digitSum() % 3 == 0) {
+        divisor = 3;
         return false;
     }
     return false;
@@ -300,9 +313,23 @@ bool BigInteger::operator<(const BigInteger& other) const {
 }
 
 bool BigInteger::operator<(int64_t other) const {
-    return *this < BigInteger(other);
+    if (isNegative) {
+        if (other >= 0) {
+            return true;  // 负数小于非负数
+        }
+        // 两个负数比较绝对值
+        BigInteger absOther(-other);
+        return compareAbs(absOther) > 0;
+    }
+    else {
+        if (other < 0) {
+            return false;  // 正数大于负数
+        }
+        // 两个正数比较
+        BigInteger absOther(other);
+        return compareAbs(absOther) < 0;
+    }
 }
-
 
 BigInteger BigInteger::operator+(const BigInteger& other) const {
     if (isNegative == other.isNegative) {
@@ -384,54 +411,13 @@ BigInteger BigInteger::operator%(const BigInteger& other) const {
 }
 
 bool BigInteger::isPrime() const { 
-    BigInteger div;
-	std::vector<BigInteger> primes;
-    return isPrime(div,primes);
+    BigInteger divisor;
+    return isPrime(divisor);
 }
 
-bool BigInteger::isPrime(BigInteger& divisor2, std::vector<BigInteger>& primes) const{
-    if (isSpecialCase()) {
-        return *this >= 2;
-    }
-    BigInteger limit = *this;
-    for (const auto& prime : primes) {
-        BigInteger primeSquared = prime * prime; // 预先计算 prime 的平方
-        if (primeSquared > limit) {
-            break;
-        }
-        if (*this % prime == BigInteger(0)) {
-            divisor2 = prime;
-            return false;
-        }
-    }
-    BigInteger nextToCheck = primes.empty() ? BigInteger(3) : primes.back() + BigInteger(2);
-        while (nextToCheck * nextToCheck <= *this) {
-            bool isNewPrime = true;
-            for (const auto& prime : primes) {
-                BigInteger primeSquared = prime * prime; // 预先计算 prime 的平方
-                if (primeSquared > nextToCheck) {
-                    break;
-                }
-                if (nextToCheck % prime == BigInteger(0)) {
-                    isNewPrime = false;
-                    break;
-                }
-            }
-            if (isNewPrime) {
-                primes.push_back(nextToCheck);
-                if (*this % nextToCheck == BigInteger(0)) {
-                    return false;
-                }
-            }
-            nextToCheck = nextToCheck + BigInteger(2);
-        }
-    return true;
-}
-    
-// 判断是否为素数 
-bool BigInteger::isPrime(int32_t* primes, int primeCount) const {
-    if (isSpecialCase()) {
-        return *this >= 2;
+bool BigInteger::isPrime(int32_t* primes, int primeCount, BigInteger& divisor) const {
+    if (isSpecialCase(divisor)) {
+        return false;
     }
     BigInteger limit = *this;
     for (int i = 0; i < primeCount; ++i) {
@@ -447,38 +433,65 @@ bool BigInteger::isPrime(int32_t* primes, int primeCount) const {
     return true;
 }
 
-// 生成 int32_t 范围内从 7 开始的素数并保存到文件
-/*void BigInteger::generatePrimesToFile(const char* filename, int32_t maxPrime) {
-	std::ofstream file(filename, std::ios::app);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file: " << filename << std::endl;
-        return;
+bool BigInteger::isPrime(BigInteger& divisor) const noexcept {
+    if (!s_primes) { // 仅在首次调用时加载
+        size_t fileSize = 0;
+        s_primes = static_cast<uint32_t*>(s_mem_file.loadFile(L"primes.dat", fileSize));
+        if (!s_primes) { return false; }
+        prime_count = fileSize / sizeof(uint32_t);
     }
-    try {
-        // 找到文件中最大的素数
-        int32_t maxPrime = 7;
-        std::ifstream readFile(filename);
-        if (readFile.is_open()) {
-            int32_t prime;
-            while (readFile >> prime) {
-                if (prime > maxPrime) {
-                    maxPrime = prime;
-                }
-            }
-            readFile.close();
+
+    if (*this < std::numeric_limits<uint32_t>::max()
+        && std::ranges::binary_search(s_primes, s_primes + prime_count, *this))
+        return true;
+
+//如果大于等于 2，则返回 true，表示该数是素数；如果小于 2，则返回 false，表示该数不是素数
+    if (isSpecialCase(divisor)) {
+        return *this >= 2;
+    }
+
+//使用预加载的素数进行初步判断
+    for (size_t i = 0; i < prime_count; ++i) {
+        uint64_t x = s_primes[i];
+        if ((*this % x) == 0) {
+            divisor = x;
+            return false;
         }
-        // 从最大素数之后开始生成素数
-        for (int32_t i = maxPrime + 1; i < std::numeric_limits<int32_t>::max(); ++i) {
-            if (isPrime(i, PRECOMPUTED_PRIME_COUNT)) {
-                file << i;
-                file << ",";
-            }
+
+        if (*this / x < x)
+            return true;
+    }
+
+//获取最后一个预加载的素数
+    uint32_t last_prime = s_primes[prime_count - 1];
+
+// 初始化步长数组和相关变量
+    static const int step[] = { 4, 2, 4, 2, 4, 6, 2, 6, };
+    int step_count = sizeof(step) / sizeof(step[0]);
+
+//确定步长数组的起始索引
+    int v = (last_prime - 7) % 30;
+    int step_index = 0;
+    while (v > 0) {
+        v -= step[step_index];
+        ++step_index;
+        step_index %= step_count;
+    }
+
+//继续检查更大的候选素数
+    BigInteger x = last_prime;
+    while ((*this / x) > x) {
+        if ((*this % x) == 0) {
+            divisor = x;
+            return false;
         }
-    }catch (const std::exception& e) {
-		std::cerr << "Exception: " << e.what() << std::endl;
-	}
-	file.close();
-}*/
+        x = BigInteger(step[step_index]) + x;
+        ++step_index;
+        step_index %= step_count;
+    }
+
+    return true;
+}
 
 BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& num) {
     if (num.isNegative && !(num.digits.size() == 1 && num.digits[0] == 0)) {
@@ -490,110 +503,4 @@ BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& 
 		os << std::setw(BigInteger::DIGIT_WIDTH) << std::setfill('0') << *it;
         }
     return os;
-}
-
-bool BigInteger::readPrimesFromFile() {
-	// 打开文件
-	HANDLE hFile = CreateFileA("primes.txt", GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (hFile == INVALID_HANDLE_VALUE) {
-		DWORD errorCode = GetLastError();
-		std::cerr << "Failed to open file. Error code: " << errorCode << std::endl;
-		return false;
-	}
-	// 获取文件大小
-	LARGE_INTEGER fileSize;
-	if (!GetFileSizeEx(hFile, &fileSize)) {
-		DWORD errorCode = GetLastError();
-		std::cerr << "Failed to get file size. Error code: " << errorCode << std::endl;
-		CloseHandle(hFile);
-		return false;
-	}
-	// 创建文件映射对象
-	HANDLE hMapFile = CreateFileMappingA(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
-	if (hMapFile == NULL) {
-		DWORD errorCode = GetLastError();
-		std::cerr << "Failed to create file mapping. Error code: " << errorCode << std::endl;
-        CloseHandle(hFile);
-        return false;
-    }
-
-    // 映射视图到进程的地址空间
-    s_primes = static_cast<uint32_t*>(MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, 0));
-    if (s_primes == NULL) {
-        DWORD errorCode = GetLastError();
-        std::cerr << "Failed to map view of file. Error code: " << errorCode << std::endl;
-        CloseHandle(hMapFile);
-        CloseHandle(hFile);
-        return false;
-    }
-
-    // 假设素数以 int 类型存储，计算素数数量
-    prime_count = fileSize.QuadPart / sizeof(uint32_t);
-
-    // 关闭文件句柄
-    CloseHandle(hFile);
-
-    return true;
-}
-
-bool BigInteger::is_prime(uint64_t value, uint64_t& divisor) noexcept
-{
-    if (value == 2 || value == 3 || value == 5)
-        return true;
-
-    for (auto x : { 2, 3, 5 })
-    {
-        if ((value % x) == 0)
-        {
-            divisor = x;
-            return false;
-        }
-    }
-
-    if (value < std::numeric_limits<int32_t>::max()//4294967295
-        && std::ranges::binary_search(s_primes, s_primes + prime_count, value))
-        return true;
-
-    for (size_t i = 0; i < prime_count; ++i)
-    {
-        uint64_t x = s_primes[i];
-        if ((value % x) == 0)
-        {
-            divisor = x;
-            return false;
-        }
-
-        if (value / x < x)
-            return true;
-    }
-
-    uint32_t last_prime = s_primes[prime_count - 1];
-
-    static const int step[] = { 4, 2, 4, 2, 4, 6, 2, 6, };
-    int step_count = sizeof(step) / sizeof(step[0]);
-
-    int v = (last_prime - 7) % 30;
-    int step_index = 0;
-    while (v > 0)
-    {
-        v -= step[step_index];
-        ++step_index;
-        step_index %= step_count;
-    }
-
-    uint64_t x = last_prime;
-    while ((value / x) > x)
-    {
-        if ((value % x) == 0)
-        {
-            divisor = x;
-            return false;
-        }
-
-        x += step[step_index];
-        ++step_index;
-        step_index %= step_count;
-    }
-
-    return true;
 }

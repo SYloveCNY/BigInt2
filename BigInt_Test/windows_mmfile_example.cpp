@@ -4,7 +4,7 @@
 
 int main() {
     // 打开文件
-    HANDLE hFile = CreateFile("primes.txt", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hFile = CreateFile("primes.dat", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
         DWORD errorCode = GetLastError();
         std::cerr << "Failed to open file. Error code: " << errorCode << std::endl;
