@@ -47,10 +47,10 @@ int32_t BigInteger::getLastDigit() const {
 }
 
 int32_t BigInteger::digitSum() const {
-    int32_t sum = 0;
+    int64_t sum = 0;
     for (int32_t digit : digits) {
         int32_t temp = digit;
-        while (temp > 0) {
+        while (temp > BASE) {
             sum += temp % BASE;
             temp /= BASE;
         }
@@ -416,9 +416,13 @@ bool BigInteger::isPrime() const {
 }
 
 bool BigInteger::isPrime(int32_t* primes, int primeCount, BigInteger& divisor) const {
+
+    //如果大于等于 2，则返回 true，表示该数是素数；如果小于 2，则返回 false，表示该数不是素数
     if (isSpecialCase(divisor)) {
-        return false;
+        return *this >= 2;
     }
+
+ 
     BigInteger limit = *this;
     for (int i = 0; i < primeCount; ++i) {
         BigInteger prime(precomputedPrimes[i]);
@@ -434,53 +438,68 @@ bool BigInteger::isPrime(int32_t* primes, int primeCount, BigInteger& divisor) c
 }
 
 bool BigInteger::isPrime(BigInteger& divisor) const noexcept {
-    if (!s_primes) { // 仅在首次调用时加载
-        size_t fileSize = 0;
-        s_primes = static_cast<uint32_t*>(s_mem_file.loadFile(L"primes.dat", fileSize));
-        if (!s_primes) { return false; }
-        prime_count = fileSize / sizeof(uint32_t);
-    }
-
-    if (*this < std::numeric_limits<uint32_t>::max()
-        && std::ranges::binary_search(s_primes, s_primes + prime_count, *this))
-        return true;
-
-//如果大于等于 2，则返回 true，表示该数是素数；如果小于 2，则返回 false，表示该数不是素数
+    //特殊情况
     if (isSpecialCase(divisor)) {
         return *this >= 2;
     }
-
-//使用预加载的素数进行初步判断
-    for (size_t i = 0; i < prime_count; ++i) {
-        uint64_t x = s_primes[i];
-        if ((*this % x) == 0) {
-            divisor = x;
-            return false;
+    //尝试加载素数文件
+    if (!s_primes) { // 仅在首次调用时加载
+        size_t fileSize = 0;
+        s_primes = static_cast<uint32_t*>(s_mem_file.loadFile(L"primes.dat", fileSize));
+        if (s_primes) {
+            prime_count = fileSize / sizeof(uint32_t);
+        }
+    }
+    // 使用素数文件进行快速判断
+    if (s_primes) {
+        if (*this < std::numeric_limits<uint32_t>::max()
+            && std::ranges::binary_search(s_primes, s_primes + prime_count, *this)) {
+            return true;
         }
 
-        if (*this / x < x)
-            return true;
+        for (size_t i = 0; i < prime_count; ++i) {
+            uint64_t x = s_primes[i];
+            if (x * x > *this) {
+                break; 
+            }
+            if ((*this % x) == 0) {
+                divisor = x;
+                return false;
+            }
+        }
+
+        uint32_t last_prime = s_primes[prime_count - 1];
+
+        static const int step[] = { 4, 2, 4, 2, 4, 6, 2, 6, };
+        int step_count = sizeof(step) / sizeof(step[0]);
+
+        int v = (last_prime - 7) % 30;
+        int step_index = 0;
+        while (v > 0) {
+            v -= step[step_index];
+            ++step_index;
+            step_index %= step_count;
+        }
+
+        BigInteger x = last_prime;
+        while ((*this / x) > x) {
+            if ((*this % x) == 0) {
+                divisor = x;
+                return false;
+            }
+            x = BigInteger(step[step_index]) + x;
+            ++step_index;
+            step_index %= step_count;
+        }
+        return true;
     }
 
-//获取最后一个预加载的素数
-    uint32_t last_prime = s_primes[prime_count - 1];
-
-// 初始化步长数组和相关变量
+    // 素数文件加载失败，从 7 开始判断
     static const int step[] = { 4, 2, 4, 2, 4, 6, 2, 6, };
     int step_count = sizeof(step) / sizeof(step[0]);
-
-//确定步长数组的起始索引
-    int v = (last_prime - 7) % 30;
+    BigInteger x = 7;
     int step_index = 0;
-    while (v > 0) {
-        v -= step[step_index];
-        ++step_index;
-        step_index %= step_count;
-    }
-
-//继续检查更大的候选素数
-    BigInteger x = last_prime;
-    while ((*this / x) > x) {
+    while (x * x <= *this) {
         if ((*this % x) == 0) {
             divisor = x;
             return false;
@@ -491,6 +510,7 @@ bool BigInteger::isPrime(BigInteger& divisor) const noexcept {
     }
 
     return true;
+        
 }
 
 BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& num) {

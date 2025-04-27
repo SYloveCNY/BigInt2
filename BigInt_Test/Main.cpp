@@ -71,6 +71,7 @@ static BigInteger factorial(int64_t n) {
  
 int main() {
 
+    const auto primes_start = std::chrono::steady_clock::now();
     BigInteger value = fibonacci(10006);
     std::cout << value;
     BigInteger divisor = 0;
@@ -79,6 +80,8 @@ int main() {
         std::cout << value << ", 是素数。" << std::endl;
     else
         std::cout << value << ", 可以被 " << divisor << " 整除。" << std::endl;
+    const auto primes_end = std::chrono::steady_clock::now();
+    const std::chrono::duration<double> primes_diff = primes_end - primes_start;
 
 /*
     BigInteger value = std::numeric_limits<uint64_t>::max();
@@ -139,6 +142,7 @@ int main() {
 
     std::cout << x << "! = " << fact << std::endl;
 
+    std::cout << "判断素数fib（10006）耗时: " << primes_diff << std::endl;
     std::cout << "计算 fib(" << n << "), 耗时: " << fib_diff << std::endl;
     std::cout << "计算 " << x << "!, 耗时: " << fac_diff << std::endl;
 
