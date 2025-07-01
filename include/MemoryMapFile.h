@@ -28,11 +28,11 @@ typedef HANDLE FileHandle;
 class MEMFILE_API MemoryMapFile {
 public:
 
-	~MemoryMapFile() { unload(); }
+	~MemoryMapFile() { unLoad(); }
 
-	void* loadFile(const FileNameType& fileName, size_t& fileSize); 
-	void unload();
-	
+	void* loadFile(const FileNameType& fileName, size_t& fileSize);
+	void unLoad();
+
 private:
 	FileHandle _map_handle;
 	FileHandle _file_handle;

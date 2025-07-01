@@ -1,152 +1,66 @@
-﻿#include "BigInteger.h"
+﻿#include <chrono>
+
+#include "BigInteger.h"
 #include "MemoryMapFile.h"
-#include <chrono>
 
-class Matrix {
-public:
-    BigInteger data[2][2];
-
-    Matrix() {
-        for (int i = 0; i < 2; ++i) {
-            for (int j = 0; j < 2; ++j) {
-                data[i][j] = BigInteger(0);
-            }
-        }
-    }
-
-    // 矩阵乘法
-    Matrix operator*(const Matrix& other) const {
-        Matrix result;
-        for (int i = 0; i < 2; ++i) {
-            for (int j = 0; j < 2; ++j) {
-                for (int k = 0; k < 2; ++k) {
-                    result.data[i][j] = result.data[i][j] + data[i][k] * other.data[k][j];
-                }
-            }
-        }
-        return result;
-    }
-};
-
-// 矩阵快速幂
-static Matrix matrixPower(const Matrix& matrix, int n) {
-    Matrix result;
-    result.data[0][0] = BigInteger(1);
-    result.data[1][1] = BigInteger(1);
-    Matrix temp = matrix;
-    while (n > 0) {
-        if (n & 1) {
-            result = result * temp;
-        }
-        temp = temp * temp;
-        n >>= 1;
-    }
-    return result;
-}
-
-static BigInteger fibonacci(int64_t n) {
-    if (n == 0) return BigInteger(0);
-    if (n == 1) return BigInteger(1);
-
-    Matrix base;
-    base.data[0][0] = BigInteger(1);
-    base.data[0][1] = BigInteger(1);
-    base.data[1][0] = BigInteger(1);
-    base.data[1][1] = BigInteger(0);
-
-    Matrix result = matrixPower(base, n - 1);
-    return result.data[0][0];
-}
-
-static BigInteger factorial(int64_t n) {
-    if (n < 0) {
-        throw std::invalid_argument("Factorial is not defined for negative numbers.");
-    }
-    BigInteger result(1);
-    for (int i = 2; i <= n; ++i) {
-        result = result * BigInteger(i);
-    }
-    return result;
-}
- 
 int main() {
+	BigInteger b = "4023872600770093773543702433923000398571937486421007146325437999104290938512398629020592004420848696940480004799886101971960580631666872994808558090132382966994459009974245040870737590918823627727188732051977950595099527601208749754624970430601418278094646496029105639388743788604873371191810458250783647849977012476063288983595573543205131853239584630750557409114262417474034934755342864657606116677973966688200291207379143853719058824980812686783803745597317461360850379534524221586593020192809087829730804313928444032812310558611036976801357030421616874760967508713483120254785890320767169132448426023613141250878020800002616831510273410827977704784635868017016436502415369103982812648102130920761244896359928705011496497541990934202215668325720808210333186116811553615083654698404670897506029009505376164750847728421889679646024494516076535340801989013854424879840959953319101723355055660213945039973602807501378376153070127761926849034352062520001588853514703316117021039681750921510907788019393017811419454525722308655414610628921870960223838971476088050627686296714667406975629112340824390208160153780889893096451826324367161607621791689097799110903754031274622289098800519544441428200121873617459926420956581746628302955057029902432415318106172104658320367860906117260158783520075151628422554026501704833042261439740286933061690897968048259012545832716802264580665267699580652682272807075781039185817888965220801643483448259932660043367660176999612083186078838615027904659551311565520360093988180612138558060030143569452722402063446317974605940682573103790084024043243846565724501404028218852524709350190620929023136493027349756551395872005596542287497740110413346962715422845086237738753823048308656889764619273830814900140767310446064025989949022222107659043399018860180566526485061799702035619389701786004008118897299183110210171229845901641921006888438712185564601249607987229085190296819372388642614083965738229112312500241866493531439700137428531926649875033721894069428143401185201580141233440828015051399694290015348307764456909900731524332782882690864602789864321139008350621709500259703898635542771967420822248757586765752034422020757363056904988250879689281620753848863396909959082628095612145099408717012445164612600379029309120889086094202851064018215403994571568059418720748998094254742173058240106367740459507417851608292301350358081840096996372052423056085590370006242712434169090040153690105933983835077793941097002775304720000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"_bi;
+	std::cout << "自定义字面量：" << b << std::endl;
 
-    const auto primes_start = std::chrono::steady_clock::now();
-    BigInteger value = fibonacci(10006);
-    std::cout << value;
-    BigInteger divisor = 0;
-    bool ret = value.isPrime(divisor); // 使用实例调用非静态成员函数
-    if (ret)
-        std::cout << value << ", 是素数。" << std::endl;
-    else
-        std::cout << value << ", 可以被 " << divisor << " 整除。" << std::endl;
-    const auto primes_end = std::chrono::steady_clock::now();
-    const std::chrono::duration<double> primes_diff = primes_end - primes_start;
+	const auto primesStart = std::chrono::steady_clock::now();
+	BigInteger value = BigInteger::fibonacci(10006);
+	std::cout << "判断：" << value;
+	BigInteger divisor = 0;
+	bool ret = value.isPrimeNumber(divisor);
+	if (ret)
+		std::cout << ", 是素数。" << std::endl;
+	else
+		std::cout << ", 可以被 " << divisor << " 整除。" << std::endl;
+	const auto primesEnd = std::chrono::steady_clock::now();
+	const std::chrono::duration<double> primesDiff = primesEnd - primesStart;
 
-/*
-    BigInteger value = std::numeric_limits<uint64_t>::max();
-    value = value - 14;
-    BigInteger divisor = 0;
-    bool ret = value.isPrime(divisor); // 使用实例调用非静态成员函数
-    if (ret)
-        std::cout << value << ", 是素数。" << std::endl;
-    else
-        std::cout << value << ", 可以被 " << divisor << " 整除。" << std::endl;
-*/
-/*
-   // 示例：判断 15 是否为素数
-    BigInteger num = 15;
-    BigInteger divisor = 0;
-    bool numret = num.isPrime(divisor); // 使用实例调用非静态成员函数
-    if (numret) {
-        std::cout << num << " 是素数。" << std::endl;
-    }
-    else {
-        std::cout << num << " 不是素数，能被 " << divisor << " 整除。" << std::endl;
-    }
-*/
-    BigInteger num1(98'7654'3210);
-    BigInteger num2(12'3456'7890);
+	BigInteger num1(98'7654'3210);
+	BigInteger num2(12'3456'7890);
 
-    std::cout << "num1: " << num1 << std::endl;
-    std::cout << "num2: " << num2 << std::endl;
+	std::cout << "num1: " << num1 << std::endl;
+	std::cout << "num2: " << num2 << std::endl;
 
-    BigInteger sum = num1 + num2;
-    std::cout << "Sum1: " << sum << std::endl;
+	BigInteger sum = num1 + num2;
+	std::cout << "Sum1: " << sum << std::endl;
 
-    BigInteger diff = num1 - num2;
-    std::cout << "Difference: " << diff << std::endl;
+	BigInteger diff = num1 - num2;
+	std::cout << "Difference: " << diff << std::endl;
 
-    BigInteger product = num1 * num2;
-    std::cout << "Product: " << product << std::endl;
+	BigInteger product = num1 * num2;
+	std::cout << "Product: " << product << std::endl;
 
-    BigInteger quotient = num1 / num2;
-    std::cout << "Quotient: " << quotient << std::endl;
+	BigInteger quotient = num1 / num2;
+	std::cout << "Quotient: " << quotient << std::endl;
 
-    BigInteger remainder = num1 % num2;
-    std::cout << "Remainder: " << remainder << std::endl;
+	BigInteger remainder = num1 % num2;
+	std::cout << "Remainder: " << remainder << std::endl;
 
-    const auto fib_start = std::chrono::steady_clock::now();
-    int n = 10'0000;
-    BigInteger fib = fibonacci(n);
-    const auto fib_end = std::chrono::steady_clock::now();
-    const std::chrono::duration<double> fib_diff = fib_end - fib_start;
+	const auto fibStart = std::chrono::steady_clock::now();
+	int n = 10'0000;
+	BigInteger fib = BigInteger::fibonacci(n);
+	const auto fibEnd = std::chrono::steady_clock::now();
+	const std::chrono::duration<double> fibDiff = fibEnd - fibStart;
 
-    std::cout << "Fibonacci(" << n << ") = " << fib << std::endl;
+	std::cout << "Fibonacci(" << n << ") = " << fib << std::endl;
 
-    const auto fac_start = std::chrono::steady_clock::now();
-    int x = 1000;
-    BigInteger fact = factorial(x);
-    const auto fac_end = std::chrono::steady_clock::now();
-    const std::chrono::duration<double> fac_diff = fac_end - fac_start;
+	const auto facStart = std::chrono::steady_clock::now();
+	int x = 1000;
+	BigInteger fact = BigInteger::factorial(x);
+	const auto facEnd = std::chrono::steady_clock::now();
+	const std::chrono::duration<double> facDiff = facEnd - facStart;
 
-    std::cout << x << "! = " << fact << std::endl;
+	std::cout << x << "! = " << fact << std::endl;
 
-    std::cout << "判断素数fib（10006）耗时: " << primes_diff << std::endl;
-    std::cout << "计算 fib(" << n << "), 耗时: " << fib_diff << std::endl;
-    std::cout << "计算 " << x << "!, 耗时: " << fac_diff << std::endl;
+	std::cout << "判断素数fib（10006）耗时: " << primesDiff << std::endl;
+	std::cout << "计算 fib(" << n << "), 耗时: " << fibDiff << std::endl;
+	std::cout << "计算 " << x << "!, 耗时: " << facDiff << std::endl;
 
-    std::cin.get();
+	std::cin.get();
 
-    return 0;
+	return 0;
 }

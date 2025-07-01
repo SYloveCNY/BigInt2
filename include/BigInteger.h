@@ -27,53 +27,66 @@
 #include <limits>
 #include <ranges>
 #include <iomanip>
+
 #include "MemoryMapFile.h"
 
-class BIGINTEGER_DLL_API BigInteger
-{
+class BIGINTEGER_DLL_API BigInteger {
 public:
-    BigInteger(uint64_t num = 0);
-    int compareAbs(const BigInteger& other) const;
-    auto operator<=>(const BigInteger& other) const;
-    bool operator==(const BigInteger& other) const;
-    bool operator==(int64_t other) const;
-    bool operator<(const BigInteger& other) const;
-    bool operator<(int64_t other) const;
-    BigInteger operator+(const BigInteger& other) const;
-    BigInteger operator-(const BigInteger& other) const;
-    BigInteger operator*(const BigInteger& other) const;
-    BigInteger operator/(const BigInteger& other) const;
-    BigInteger operator%(const BigInteger& other) const;  
-    bool isPrime() const;
-	bool isPrime(int32_t* primes, int primeCount, BigInteger& divisor) const;
-    bool isPrime(BigInteger& divisor) const noexcept;
-    friend BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& num);
-	friend class PrimesFileDll;
+	BigInteger(uint64_t num = 0);
+	auto operator<=>(const BigInteger& other) const;
+	bool operator==(const BigInteger& other) const;
+	bool operator==(int64_t other) const;
+	bool operator<(const BigInteger& other) const;
+	bool operator<(int64_t other) const;
+	bool operator<=(const BigInteger& other) const;
+	BigInteger operator+(const BigInteger& other) const;
+	BigInteger operator-(const BigInteger& other) const;
+	BigInteger operator*(const BigInteger& other) const;
+	BigInteger operator/(const BigInteger& other) const;
+	BigInteger operator%(const BigInteger& other) const;
+	bool isPrimeNumber() const;
+	bool isPrimeNumber(BigInteger& divisor) const noexcept;
+	static BigInteger fibonacci(int64_t n);
+	static BigInteger factorial(int64_t n);
+	friend BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& num);
 
 private:
-    bool isZero() const;
-    void removeLeadingZeros();
-    int32_t getLastDigit() const;
-    int32_t digitSum() const;
-    bool isLastDigitDivisibleBy2Or5() const;
-    bool isSpecialCase(BigInteger& divisor) const;
-    auto compare_digits(const BigInteger& other) const;
-    BigInteger inner_add(const BigInteger& other) const;
-    BigInteger inner_sub(const BigInteger& other) const;
-    BigInteger inner_mul(const BigInteger& other) const;
-    std::pair<BigInteger, BigInteger> inner_div(const BigInteger& divisor) const;
-    
+	int compareDigitsAbsolute(const BigInteger& other) const;
+	bool isZero() const;
+	void removeLeadingZeros();
+	int32_t sumOfDigits() const;
+	bool isLastDigitDivisibleBy2Or5() const;
+	bool isSpecialCase(BigInteger& divisor) const;
+	auto compareDigits(const BigInteger& other) const;
+	bool checkPrimeWithStep(BigInteger& divisor, BigInteger start) const;
+	BigInteger innerAdd(const BigInteger& other) const;
+	BigInteger innerSub(const BigInteger& other) const;
+	BigInteger innerMul(const BigInteger& other) const;
+	std::pair<BigInteger, BigInteger> innerDiv(const BigInteger& divisor) const;
+
 
 private:
-    std::vector<int32_t> digits;
-    bool isNegative;
-    int digitCount;
-    static const int64_t BASE;
-    static const int DIGIT_WIDTH;
-	static const int PRECOMPUTED_PRIME_COUNT;
-	static BigInteger precomputedPrimes[];
-	static  uint32_t* s_primes;
-	static  size_t prime_count;
-    static MemoryMapFile s_mem_file;
+	static const int STEP[];
+	static const int STEP_COUNT;
+	static const int64_t BASE;
+	static const int DIGIT_WIDTH;
+
+	std::vector<int32_t> digits;
+	bool isNegative;
+	int digitCount;
+
+	static uint32_t* sPrimes;
+	static size_t primeCount;
+	static MemoryMapFile sMemFile;
 };
- 
+
+BIGINTEGER_DLL_API BigInteger operator"" _bi(const char* str, size_t len);
+
+class BIGINTEGER_DLL_API Matrix {
+public:
+	BigInteger data[2][2];
+
+	Matrix();
+	Matrix operator*(const Matrix& other) const;
+	Matrix fastPower(int n) const;
+};
