@@ -10,7 +10,7 @@ size_t BigInteger::primeCount = 0;
 MemoryMapFile BigInteger::sMemFile;
 
 
-BigInteger::BigInteger(uint64_t num) : isNegative(num < 0) {
+BigInteger::BigInteger(uint64_t num) {
 	do {
 		digits.push_back(num % BASE);
 		num /= BASE;
@@ -18,18 +18,12 @@ BigInteger::BigInteger(uint64_t num) : isNegative(num < 0) {
 	removeLeadingZeros();
 }
 
-BigInteger operator"" _bi(const char* str, size_t len) {
-	for (size_t i = 0; i < len; i++) {
-		if (str[i] < '0' || str[i] > '9') {
-			throw std::invalid_argument("BigInteger字面量包含非数字字符");
-		}
+// 检查所有块是否为零
+bool BigInteger::allZero(const std::vector<uint64_t>& blocks) {
+	for (uint64_t block : blocks) {
+		if (block != 0) return false;
 	}
-	// 自定义大整数解析逻辑（支持任意长度）
-	BigInteger result;
-	for (size_t i = 0; i < len; i++) {
-		result = result * 10 + (str[i] - '0');
-	}
-	return result;
+	return true;
 }
 
 int BigInteger::compareDigitsAbsolute(const BigInteger& other) const {
@@ -104,16 +98,27 @@ auto BigInteger::compareDigits(const BigInteger& other) const {
 }
 
 bool BigInteger::checkPrimeWithStep(BigInteger& divisor, BigInteger start) const {
-	int step_index = 0;
+	int stepIndex = 0;
 	BigInteger x = start;
-	while (x * x <= *this) {
-		if ((*this % x) == 0) {
+
+	while (true) {
+		// 一次性计算商和余数
+		auto [quotient, remainder] = this->innerDiv(x);
+
+		// 检查整除性
+		if (remainder == 0) {
 			divisor = x;
 			return false;
 		}
-		x = BigInteger(STEP[step_index]) + x;
-		++step_index;
-		step_index %= STEP_COUNT;
+
+		// 提前终止条件：如果商小于等于当前除数，后续不可能整除
+		if (quotient <= x) {
+			break;
+		}
+
+		x = BigInteger(STEP[stepIndex]) + x;
+		++stepIndex;
+		stepIndex %= STEP_COUNT;
 	}
 	return true;
 }
@@ -446,50 +451,50 @@ bool BigInteger::isPrimeNumber() const {
 }
 
 bool BigInteger::isPrimeNumber(BigInteger& divisor) const noexcept {
-	// 特殊情况
-	if (*this < 2) return false;
-	if (isSpecialCase(divisor)) {
-		return true;
-	}
-	// 尝试加载素数文件
-	if (!sPrimes) { // 仅在首次调用时加载
-		size_t file_size = 0;
-		sPrimes = static_cast<uint32_t*>(sMemFile.loadFile(L"primes.dat", file_size));
-		if (sPrimes) {
-			primeCount = file_size / sizeof(uint32_t);
-		}
-	}
-	// 使用素数文件进行快速判断
-	if (sPrimes) {
-		if (*this < std::numeric_limits<uint32_t>::max()
-			&& std::ranges::binary_search(sPrimes, sPrimes + primeCount, *this)) {
-			return true;
-		}
+	//// 特殊情况
+	//if (*this < 2) return false;
+	//if (isSpecialCase(divisor)) {
+	//	return true;
+	//}
+	//// 尝试加载素数文件
+	//if (!sPrimes) { // 仅在首次调用时加载
+	//	size_t file_size = 0;
+	//	sPrimes = static_cast<uint32_t*>(sMemFile.loadFile(L"primes.dat", file_size));
+	//	if (sPrimes) {
+	//		primeCount = file_size / sizeof(uint32_t);
+	//	}
+	//}
+	//// 使用素数文件进行快速判断
+	//if (sPrimes) {
+	//	if (*this < std::numeric_limits<uint32_t>::max()
+	//		&& std::ranges::binary_search(sPrimes, sPrimes + primeCount, *this)) {
+	//		return true;
+	//	}
 
-		for (size_t i = 0; i < primeCount; ++i) {
-			uint64_t x = sPrimes[i];
-			if (x * x > *this) {
-				break;
-			}
-			if ((*this % x) == 0) {
-				divisor = x;
-				return false;
-			}
-		}
+	//	for (size_t i = 0; i < primeCount; ++i) {
+	//		BigInteger x = sPrimes[i];
+	//		if (x * x > *this) {
+	//			break;
+	//		}
+	//		if ((*this % x) == 0) {
+	//			divisor = x;
+	//			return false;
+	//		}
+	//	}
 
-		uint32_t last_prime = sPrimes[primeCount - 1];
+	//	uint32_t last_prime = sPrimes[primeCount - 1];
 
-		int v = (last_prime - 7) % 30;
-		int step_index = 0;
-		while (v > 0) {
-			v -= STEP[step_index];
-			++step_index;
-			step_index %= STEP_COUNT;
-		}
+	//	int v = (last_prime - 7) % 30;
+	//	int step_index = 0;
+	//	while (v > 0) {
+	//		v -= STEP[step_index];
+	//		++step_index;
+	//		step_index %= STEP_COUNT;
+	//	}
 
-		BigInteger start = last_prime;
-		return checkPrimeWithStep(divisor, start);
-	}
+	//	BigInteger start = last_prime;
+	//	return checkPrimeWithStep(divisor, start);
+	//}
 	// 素数文件加载失败，从 7 开始判断   
 	BigInteger start = 7;
 	return checkPrimeWithStep(divisor, start);
@@ -565,4 +570,103 @@ BIGINTEGER_DLL_API Matrix Matrix::fastPower(int n) const {
 		n >>= 1;
 	}
 	return result;
+}
+
+BIGINTEGER_DLL_API BigInteger operator"" _bi(const char* str, size_t len) {
+	// 检查合法性：分隔符不能出现在首尾，且不能连续出现
+	if (len > 0) {
+		if (str[0] == '\'' || str[len - 1] == '\'') {
+			throw std::invalid_argument("BigInteger字面量首尾不能使用分隔符");
+		}
+		for (size_t i = 0; i < len - 1; i++) {
+			if (str[i] == '\'' && str[i + 1] == '\'') {
+				throw std::invalid_argument("BigInteger字面量不能包含连续的分隔符");
+			}
+		}
+	}
+
+	// 移除所有分隔符并处理符号
+	std::string cleanStr;
+	bool isNegative = false;
+	bool hasSign = false;
+	bool hasNonSignChar = false;  // 标记是否已出现非符号字符
+
+	for (size_t i = 0; i < len; ++i) {
+		if (str[i] == '\'') continue;
+
+		// 检查是否为符号位
+		if (!hasSign && (str[i] == '+' || str[i] == '-')) {
+			// 符号位必须是第一个有效字符（不能在非符号字符之后）
+			if (hasNonSignChar) {
+				throw std::invalid_argument("符号位只能出现在首位");
+			}
+			hasSign = true;
+			if (str[i] == '-') isNegative = true;
+			continue;
+		}
+
+		// 标记已出现非符号字符
+		hasNonSignChar = true;
+
+		// 确保符号后紧跟数字
+		if (hasSign && cleanStr.empty() && !std::isdigit(str[i])) {
+			throw std::invalid_argument("符号后必须紧跟数字");
+		}
+
+		if (!std::isdigit(str[i])) {
+			throw std::invalid_argument("BigInteger字面量包含非法字符");
+		}
+
+		cleanStr += str[i];
+	}
+
+	// 处理空字符串或全零
+	if (cleanStr.empty() || cleanStr == "0") {
+		return BigInteger({}, false);  // 零值
+	}
+
+	// 移除前导零
+	size_t firstNonZero = cleanStr.find_first_not_of('0');
+	if (firstNonZero != std::string::npos) {
+		cleanStr = cleanStr.substr(firstNonZero);
+	}
+	else {
+		cleanStr = "0"; // 如果全是零，设置为 "0"
+	}
+
+	// 直接构造 digits 向量（低位在前）
+	std::vector<int32_t> digits;
+
+	// 从低位到高位，按每 9 位一组处理
+	for (size_t i = cleanStr.length(); i > 0; ) {
+		// 计算当前组的起始位置（确保不越界）
+		size_t start = (i >= BigInteger::DIGIT_WIDTH) ? (i - BigInteger::DIGIT_WIDTH) : 0;
+
+		// 计算当前组的长度（确保不越界）
+		size_t length = i - start;
+
+		// 安全检查：确保 start 和 length 有效
+		if (start > cleanStr.length() || length == 0) {
+			throw std::out_of_range("Invalid substring range");
+		}
+
+		std::string group = cleanStr.substr(start, length);
+
+		// 使用 stoll 避免溢出，并检查范围
+		long long value = std::stoll(group);
+
+		// 确保转换结果在 int32_t 范围内
+		if (value < std::numeric_limits<int32_t>::min() ||
+			value > std::numeric_limits<int32_t>::max()) {
+			throw std::overflow_error("Digit group out of int32_t range");
+		}
+
+		digits.push_back(static_cast<int32_t>(value));
+
+		// 更新循环变量（直接跳到下一组）
+		i = start;
+	}
+
+	// 使用私有构造函数直接构造 BigInteger
+	return BigInteger(std::move(digits), isNegative);
 }

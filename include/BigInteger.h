@@ -32,18 +32,24 @@
 
 class BIGINTEGER_DLL_API BigInteger {
 public:
+	// 从64位无符号整数构造
 	BigInteger(uint64_t num = 0);
+	// 比较运算符
 	auto operator<=>(const BigInteger& other) const;
 	bool operator==(const BigInteger& other) const;
 	bool operator==(int64_t other) const;
 	bool operator<(const BigInteger& other) const;
 	bool operator<(int64_t other) const;
 	bool operator<=(const BigInteger& other) const;
+	// 算术运算符
 	BigInteger operator+(const BigInteger& other) const;
 	BigInteger operator-(const BigInteger& other) const;
 	BigInteger operator*(const BigInteger& other) const;
 	BigInteger operator/(const BigInteger& other) const;
 	BigInteger operator%(const BigInteger& other) const;
+	// 友元声明
+	friend BIGINTEGER_DLL_API BigInteger operator"" _bi(const char* str, size_t len);
+
 	bool isPrimeNumber() const;
 	bool isPrimeNumber(BigInteger& divisor) const noexcept;
 	static BigInteger fibonacci(int64_t n);
@@ -51,6 +57,12 @@ public:
 	friend BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& num);
 
 private:
+	// 私有构造函数
+	BigInteger(std::vector<int32_t>&& d, bool negative)
+		: digits(std::move(d)), isNegative(negative) {
+	}
+	// 检查所有块是否为零
+	static bool allZero(const std::vector<uint64_t>& blocks);
 	int compareDigitsAbsolute(const BigInteger& other) const;
 	bool isZero() const;
 	void removeLeadingZeros();
@@ -80,8 +92,6 @@ private:
 	static MemoryMapFile sMemFile;
 };
 
-BIGINTEGER_DLL_API BigInteger operator"" _bi(const char* str, size_t len);
-
 class BIGINTEGER_DLL_API Matrix {
 public:
 	BigInteger data[2][2];
@@ -90,3 +100,6 @@ public:
 	Matrix operator*(const Matrix& other) const;
 	Matrix fastPower(int n) const;
 };
+
+// 全局声明添加宏
+BIGINTEGER_DLL_API BigInteger operator"" _bi(const char* str, size_t len);
