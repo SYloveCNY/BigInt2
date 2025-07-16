@@ -72,11 +72,11 @@ bool BigInteger::isSpecialCase(BigInteger& divisor) const {
 		if (digits[0] == 5) {
 			divisor = 5;
 		}
-		return false;
+		return true;
 	}
 	if (sumOfDigits() % 3 == 0) {
 		divisor = 3;
-		return false;
+		return true;
 	}
 	return false;
 }
@@ -645,21 +645,10 @@ BIGINTEGER_DLL_API BigInteger operator"" _bi(const char* str, size_t len) {
 		// 计算当前组的长度（确保不越界）
 		size_t length = i - start;
 
-		// 安全检查：确保 start 和 length 有效
-		if (start > cleanStr.length() || length == 0) {
-			throw std::out_of_range("Invalid substring range");
-		}
-
 		std::string group = cleanStr.substr(start, length);
 
 		// 使用 stoll 避免溢出，并检查范围
-		long long value = std::stoll(group);
-
-		// 确保转换结果在 int32_t 范围内
-		if (value < std::numeric_limits<int32_t>::min() ||
-			value > std::numeric_limits<int32_t>::max()) {
-			throw std::overflow_error("Digit group out of int32_t range");
-		}
+		int32_t value = std::stoi(group);
 
 		digits.push_back(static_cast<int32_t>(value));
 
