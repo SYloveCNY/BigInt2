@@ -5,16 +5,19 @@ const int BigInteger::STEP_COUNT = sizeof(BigInteger::STEP) / sizeof(BigInteger:
 const int64_t BigInteger::BASE = 10'0000'0000LL;
 const int BigInteger::DIGIT_WIDTH = 9;
 
+bool isNegative = false;
+
 uint32_t* BigInteger::sPrimes = nullptr;
 size_t BigInteger::primeCount = 0;
 MemoryMapFile BigInteger::sMemFile;
 
 
-BigInteger::BigInteger(uint64_t num) {
+BigInteger::BigInteger(uint64_t num) : isNegative(false) {
 	do {
 		digits.push_back(num % BASE);
 		num /= BASE;
 	} while (num > 0);
+
 	removeLeadingZeros();
 }
 
@@ -23,6 +26,7 @@ bool BigInteger::allZero(const std::vector<uint64_t>& blocks) {
 	for (uint64_t block : blocks) {
 		if (block != 0) return false;
 	}
+
 	return true;
 }
 
@@ -30,55 +34,37 @@ int BigInteger::compareDigitsAbsolute(const BigInteger& other) const {
 	if (digits.size() != other.digits.size()) {
 		return static_cast<int>(digits.size()) - static_cast<int>(other.digits.size());
 	}
+
 	for (int i = digits.size() - 1; i >= 0; --i) {
 		if (digits[i] != other.digits[i]) {
 			return digits[i] - other.digits[i];
 		}
 	}
+
 	return 0;
 }
 
 bool BigInteger::isZero() const {
-	return digits.size() == 1 && digits[0] == 0;
+	return digits.empty() || (digits.size() == 1 && digits[0] == 0);
 }
 
 void BigInteger::removeLeadingZeros() {
 	while (digits.size() > 1 && digits.back() == 0) {
 		digits.pop_back();
 	}
+	if (isZero()) {
+		isNegative = false;  // 零值强制为非负
+	}
 }
 
-int32_t BigInteger::sumOfDigits() const {
-	int64_t sum = 0;
+int32_t BigInteger::mod3() const {
+	int32_t sum = 0;
 	for (int32_t digit : digits) {
 		sum += digit;
 		sum %= 3;  // 累加过程中对 3 取模，避免溢出
 	}
-	return sum;
-}
 
-bool BigInteger::isLastDigitDivisibleBy2Or5() const {
-	if (digitCount == 0) return false;
-	int32_t last_digit = digits[0];
-	return last_digit % 2 == 0 || last_digit % 5 == 0;
-}
-
-bool BigInteger::isSpecialCase(BigInteger& divisor) const {
-	if (*this == 2 || *this == 3 || *this == 5) {
-		return true;
-	}
-	if (isLastDigitDivisibleBy2Or5()) {
-		divisor = 2;
-		if (digits[0] == 5) {
-			divisor = 5;
-		}
-		return true;
-	}
-	if (sumOfDigits() % 3 == 0) {
-		divisor = 3;
-		return true;
-	}
-	return false;
+	return sum % 3;
 }
 
 auto BigInteger::compareDigits(const BigInteger& other) const {
@@ -120,6 +106,7 @@ bool BigInteger::checkPrimeWithStep(BigInteger& divisor, BigInteger start) const
 		++stepIndex;
 		stepIndex %= STEP_COUNT;
 	}
+
 	return true;
 }
 
@@ -137,6 +124,14 @@ BigInteger BigInteger::innerAdd(const BigInteger& other) const {
 		carry /= BASE;
 	}
 
+#if 1
+	auto& remain_digits = (digits.size() > common_size) ? digits : other.digits;
+	for (size_t i = common_size; i < remain_digits.size(); ++i) {
+		carry += remain_digits[i];
+		result.digits.push_back(carry % BASE);
+		carry /= BASE;
+	}
+#else
 	// 处理第一个大整数剩余的位
 	if (digits.size() > common_size) {
 		for (size_t i = common_size; i < digits.size(); ++i) {
@@ -153,6 +148,7 @@ BigInteger BigInteger::innerAdd(const BigInteger& other) const {
 			carry /= BASE;
 		}
 	}
+#endif
 
 	// 处理最后可能的进位
 	if (carry > 0) {
@@ -167,25 +163,23 @@ BigInteger BigInteger::innerSub(const BigInteger& other) const {
 	if (compareDigits(other) == std::strong_ordering::less) {
 		return other.innerSub(*this);
 	}
+
 	BigInteger result;
 	result.digits.clear();
-	int64_t borrow = 0;
+	bool borrow = 0;
 	for (int i = 0; i < static_cast<int>(digits.size()); ++i) {
 		int64_t digit1 = digits[i];
 		int64_t digit2 = (i < static_cast<int>(other.digits.size())) ? other.digits[i] : 0;
 		int64_t diff = digit1 - digit2 - borrow;
-		if (diff < 0) {
+		borrow = diff < 0;
+		if (borrow) {
 			diff += BASE;
-			borrow = 1;
-		}
-		else {
-			borrow = 0;
 		}
 		result.digits.push_back(diff);
 	}
+
 	result.removeLeadingZeros();
 	return result;
-
 }
 
 BigInteger BigInteger::innerMul(const BigInteger& other) const {
@@ -211,7 +205,6 @@ BigInteger BigInteger::innerMul(const BigInteger& other) const {
 	result.digits.clear();
 	result.digits.resize(digits.size() + other.digits.size());
 
-
 	for (size_t i = 0; i < digits.size(); ++i) {
 		int64_t carry = 0;
 		for (size_t j = 0; j < other.digits.size() || carry; ++j) {
@@ -221,6 +214,7 @@ BigInteger BigInteger::innerMul(const BigInteger& other) const {
 			carry = static_cast<int64_t>(cur / BASE);
 		}
 	}
+
 	result.removeLeadingZeros();
 	return result;
 }
@@ -278,9 +272,11 @@ std::pair<BigInteger, BigInteger> BigInteger::innerDiv(const BigInteger& divisor
 				right = mid - 1;
 			}
 		}
+
 		quotient.digits.insert(quotient.digits.begin(), q);
 		remainder = remainder - divisor * q;
 	}
+
 	quotient.removeLeadingZeros();
 	return { quotient, remainder };
 }
@@ -355,6 +351,7 @@ bool BigInteger::operator<=(const BigInteger& other) const {
 	else if (digits.size() > other.digits.size()) {
 		return false;
 	}
+
 	for (int i = digits.size() - 1; i >= 0; --i) {
 		if (digits[i] < other.digits[i]) {
 			return true;
@@ -363,7 +360,18 @@ bool BigInteger::operator<=(const BigInteger& other) const {
 			return false;
 		}
 	}
+
 	return true;
+}
+
+BigInteger BigInteger::operator+() const {
+	return BigInteger(*this);
+}
+
+BigInteger BigInteger::operator-() const {
+	BigInteger ret(*this);
+	ret.isNegative = !ret.isNegative;
+	return ret;
 }
 
 BigInteger BigInteger::operator+(const BigInteger& other) const {
@@ -372,17 +380,15 @@ BigInteger BigInteger::operator+(const BigInteger& other) const {
 		result.isNegative = isNegative;
 		return result;
 	}
+	else if (isNegative) {
+		BigInteger temp = *this;
+		temp.isNegative = false;
+		return other - temp;
+	}
 	else {
-		if (isNegative) {
-			BigInteger temp = *this;
-			temp.isNegative = false;
-			return other - temp;
-		}
-		else {
-			BigInteger temp = other;
-			temp.isNegative = false;
-			return *this - temp;
-		}
+		BigInteger temp = other;
+		temp.isNegative = false;
+		return *this - temp;
 	}
 }
 
@@ -393,23 +399,22 @@ BigInteger BigInteger::operator-(const BigInteger& other) const {
 			result.isNegative = !isNegative;
 			return result;
 		}
+
 		BigInteger result = innerSub(other);
 		result.isNegative = isNegative;
 		return result;
 	}
+	else if (isNegative) {
+		BigInteger temp = *this;
+		temp.isNegative = false;
+		BigInteger result = temp + other;
+		result.isNegative = true;
+		return result;
+	}
 	else {
-		if (isNegative) {
-			BigInteger temp = *this;
-			temp.isNegative = false;
-			BigInteger result = temp + other;
-			result.isNegative = true;
-			return result;
-		}
-		else {
-			BigInteger temp = other;
-			temp.isNegative = false;
-			return *this + temp;
-		}
+		BigInteger temp = other;
+		temp.isNegative = false;
+		return *this + temp;
 	}
 }
 
@@ -423,6 +428,7 @@ BigInteger BigInteger::operator/(const BigInteger& other) const {
 	if (other.isZero()) {
 		throw std::invalid_argument("Division by zero");
 	}
+
 	BigInteger abs_dividend = *this;
 	abs_dividend.isNegative = false;
 	BigInteger abs_divisor = other;
@@ -436,6 +442,7 @@ BigInteger BigInteger::operator%(const BigInteger& other) const {
 	if (other.isZero()) {
 		throw std::invalid_argument("Modulo by zero");
 	}
+
 	BigInteger abs_dividend = *this;
 	abs_dividend.isNegative = false;
 	BigInteger abs_divisor = other;
@@ -451,50 +458,80 @@ bool BigInteger::isPrimeNumber() const {
 }
 
 bool BigInteger::isPrimeNumber(BigInteger& divisor) const noexcept {
-	//// 特殊情况
-	//if (*this < 2) return false;
-	//if (isSpecialCase(divisor)) {
-	//	return true;
-	//}
-	//// 尝试加载素数文件
-	//if (!sPrimes) { // 仅在首次调用时加载
-	//	size_t file_size = 0;
-	//	sPrimes = static_cast<uint32_t*>(sMemFile.loadFile(L"primes.dat", file_size));
-	//	if (sPrimes) {
-	//		primeCount = file_size / sizeof(uint32_t);
-	//	}
-	//}
-	//// 使用素数文件进行快速判断
-	//if (sPrimes) {
-	//	if (*this < std::numeric_limits<uint32_t>::max()
-	//		&& std::ranges::binary_search(sPrimes, sPrimes + primeCount, *this)) {
-	//		return true;
-	//	}
+	// 特殊情况
+	if (*this < 2) return false;
 
-	//	for (size_t i = 0; i < primeCount; ++i) {
-	//		BigInteger x = sPrimes[i];
-	//		if (x * x > *this) {
-	//			break;
-	//		}
-	//		if ((*this % x) == 0) {
-	//			divisor = x;
-	//			return false;
-	//		}
-	//	}
+	if (*this == 2 || *this == 3 || *this == 5) {
+		return true;
+	}
 
-	//	uint32_t last_prime = sPrimes[primeCount - 1];
+	auto isDivBy235 = [this](BigInteger& divisor) {
+		bool ret = true;
+		int32_t last_digit = digits[0];
+		if (last_digit % 2 == 0) {
+			divisor = 2;
+		}
+		else if (last_digit % 5 == 0) {
+			divisor = 5;
+		}
+		else if (mod3() == 0) {
+			divisor = 3;
+		}
+		else {
+			ret = false;
+		}
 
-	//	int v = (last_prime - 7) % 30;
-	//	int step_index = 0;
-	//	while (v > 0) {
-	//		v -= STEP[step_index];
-	//		++step_index;
-	//		step_index %= STEP_COUNT;
-	//	}
+		return ret;
+	};
 
-	//	BigInteger start = last_prime;
-	//	return checkPrimeWithStep(divisor, start);
-	//}
+	if (isDivBy235(divisor)) {
+		return false;
+	}
+
+#if 1
+	// 尝试加载素数文件
+	if (!sPrimes) { // 仅在首次调用时加载
+		size_t file_size = 0;
+		sPrimes = static_cast<uint32_t*>(sMemFile.loadFile(L"primes.dat", file_size));
+		if (sPrimes) {
+			primeCount = file_size / sizeof(uint32_t);
+		}
+	}
+	// 使用素数文件进行快速判断
+	if (sPrimes) {
+		if (*this < std::numeric_limits<uint32_t>::max()
+			&& std::ranges::binary_search(sPrimes, sPrimes + primeCount, *this)) {
+			return true;
+		}
+
+		for (size_t i = 0; i < primeCount; ++i) {
+			BigInteger x = sPrimes[i];
+			auto [quotient, remainder] = this->innerDiv(x);
+			if (remainder == 0) {
+				divisor = x;
+				return false;
+			}
+			if (quotient <= x) {
+				break;
+			}
+
+			
+		}
+
+		uint32_t last_prime = sPrimes[primeCount - 1];
+
+		int v = (last_prime - 7) % 30;
+		int step_index = 0;
+		while (v > 0) {
+			v -= STEP[step_index];
+			++step_index;
+			step_index %= STEP_COUNT;
+		}
+
+		BigInteger start = last_prime;
+		return checkPrimeWithStep(divisor, start);
+	}
+#endif
 	// 素数文件加载失败，从 7 开始判断   
 	BigInteger start = 7;
 	return checkPrimeWithStep(divisor, start);
@@ -518,22 +555,32 @@ BigInteger BigInteger::factorial(int64_t n) {
 	if (n < 0) {
 		throw std::invalid_argument("Factorial is not defined for negative numbers.");
 	}
+
 	BigInteger result(1);
 	for (int i = 2; i <= n; ++i) {
 		result = result * BigInteger(i);
 	}
+
 	return result;
 }
 
 BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& num) {
-	if (num.isNegative && !(num.digits.size() == 1 && num.digits[0] == 0)) {
+	// 处理负号（零值不输出负号）
+	if (num.isNegative && !num.isZero()) {
 		os << '-';
 	}
+
+	// 处理空 digits（零值）
+	if (num.digits.empty()) {
+		return os << '0';
+	}
+
 	auto it = num.digits.rbegin();
 	os << *it;
 	for (++it; it != num.digits.rend(); ++it) {
 		os << std::setw(BigInteger::DIGIT_WIDTH) << std::setfill('0') << *it;
 	}
+
 	return os;
 }
 
@@ -554,6 +601,7 @@ BIGINTEGER_DLL_API Matrix Matrix::operator*(const Matrix& other) const {
 			}
 		}
 	}
+
 	return result;
 }
 
@@ -569,8 +617,11 @@ BIGINTEGER_DLL_API Matrix Matrix::fastPower(int n) const {
 		temp = temp * temp;
 		n >>= 1;
 	}
+
 	return result;
 }
+
+using std::operator""s;
 
 BIGINTEGER_DLL_API BigInteger operator"" _bi(const char* str, size_t len) {
 	// 检查合法性：分隔符不能出现在首尾，且不能连续出现
@@ -578,6 +629,7 @@ BIGINTEGER_DLL_API BigInteger operator"" _bi(const char* str, size_t len) {
 		if (str[0] == '\'' || str[len - 1] == '\'') {
 			throw std::invalid_argument("BigInteger字面量首尾不能使用分隔符");
 		}
+
 		for (size_t i = 0; i < len - 1; i++) {
 			if (str[i] == '\'' && str[i + 1] == '\'') {
 				throw std::invalid_argument("BigInteger字面量不能包含连续的分隔符");
@@ -600,6 +652,7 @@ BIGINTEGER_DLL_API BigInteger operator"" _bi(const char* str, size_t len) {
 			if (hasNonSignChar) {
 				throw std::invalid_argument("符号位只能出现在首位");
 			}
+
 			hasSign = true;
 			if (str[i] == '-') isNegative = true;
 			continue;
@@ -622,7 +675,7 @@ BIGINTEGER_DLL_API BigInteger operator"" _bi(const char* str, size_t len) {
 
 	// 处理空字符串或全零
 	if (cleanStr.empty() || cleanStr == "0") {
-		return BigInteger({}, false);  // 零值
+		return BigInteger({0}, false);  // 零值
 	}
 
 	// 移除前导零
@@ -645,10 +698,21 @@ BIGINTEGER_DLL_API BigInteger operator"" _bi(const char* str, size_t len) {
 		// 计算当前组的长度（确保不越界）
 		size_t length = i - start;
 
+		// 安全检查：确保 start 和 length 有效
+		if (start > cleanStr.length() || length == 0) {
+			throw std::out_of_range("Invalid substring range");
+		}
+
 		std::string group = cleanStr.substr(start, length);
 
 		// 使用 stoll 避免溢出，并检查范围
-		int32_t value = std::stoi(group);
+		long long value = std::stoll(group);
+
+		// 确保转换结果在 int32_t 范围内
+		if (value < std::numeric_limits<int32_t>::min() ||
+			value > std::numeric_limits<int32_t>::max()) {
+			throw std::overflow_error("Digit group out of int32_t range");
+		}
 
 		digits.push_back(static_cast<int32_t>(value));
 

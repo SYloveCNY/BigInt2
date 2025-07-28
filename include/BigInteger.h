@@ -41,34 +41,40 @@ public:
 	bool operator<(const BigInteger& other) const;
 	bool operator<(int64_t other) const;
 	bool operator<=(const BigInteger& other) const;
+	// 一元运算符
+	BigInteger operator+() const;
+	BigInteger operator-() const;
 	// 算术运算符
 	BigInteger operator+(const BigInteger& other) const;
 	BigInteger operator-(const BigInteger& other) const;
 	BigInteger operator*(const BigInteger& other) const;
 	BigInteger operator/(const BigInteger& other) const;
 	BigInteger operator%(const BigInteger& other) const;
-	// 友元声明
-	friend BIGINTEGER_DLL_API BigInteger operator"" _bi(const char* str, size_t len);
 
 	bool isPrimeNumber() const;
 	bool isPrimeNumber(BigInteger& divisor) const noexcept;
 	static BigInteger fibonacci(int64_t n);
 	static BigInteger factorial(int64_t n);
+
+	// 友元声明
+	friend BIGINTEGER_DLL_API BigInteger operator"" _bi(const char* str, size_t len);
 	friend BIGINTEGER_DLL_API std::ostream& operator<<(std::ostream& os, const BigInteger& num);
 
 private:
 	// 私有构造函数
 	BigInteger(std::vector<int32_t>&& d, bool negative)
 		: digits(std::move(d)), isNegative(negative) {
+		removeLeadingZeros();
+		if (isZero()) {
+			isNegative = false;  // 零值强制为非负
+		}
 	}
 	// 检查所有块是否为零
 	static bool allZero(const std::vector<uint64_t>& blocks);
 	int compareDigitsAbsolute(const BigInteger& other) const;
 	bool isZero() const;
 	void removeLeadingZeros();
-	int32_t sumOfDigits() const;
-	bool isLastDigitDivisibleBy2Or5() const;
-	bool isSpecialCase(BigInteger& divisor) const;
+	int32_t mod3() const;
 	auto compareDigits(const BigInteger& other) const;
 	bool checkPrimeWithStep(BigInteger& divisor, BigInteger start) const;
 	BigInteger innerAdd(const BigInteger& other) const;

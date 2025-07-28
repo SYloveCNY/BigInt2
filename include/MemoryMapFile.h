@@ -16,13 +16,15 @@
 
 #if defined(__unix__)
 typedef std::string FileNameType;
-typedef xxx FileHandle;
+typedef void* FileHandle;
+#define USTR(x) x
 #else
 #define NOMINMAX
 #include <windows.h>
 #define __WIN
 typedef std::wstring FileNameType;
 typedef HANDLE FileHandle;
+#define USTR(x) L ## x
 #endif
 
 class MEMFILE_API MemoryMapFile {
