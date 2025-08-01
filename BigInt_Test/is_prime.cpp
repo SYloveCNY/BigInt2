@@ -1,5 +1,4 @@
 ﻿#define NOMINMAX
-#include <windows.h>
 #include <iostream>
 #include <string>
 #include <cstdint>

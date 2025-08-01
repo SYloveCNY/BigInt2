@@ -12,7 +12,7 @@ int main() {
     }
 
     // 获取文件大小
-    LARGE_INTEGER fileSize;
+    // LARGE_INTEGER fileSize;
     if (!GetFileSizeEx(hFile, &fileSize)) {
         std::cerr << "无法获取文件大小: " << GetLastError() << std::endl;
         CloseHandle(hFile);

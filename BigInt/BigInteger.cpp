@@ -492,7 +492,11 @@ bool BigInteger::isPrimeNumber(BigInteger& divisor) const noexcept {
 	// 尝试加载素数文件
 	if (!sPrimes) { // 仅在首次调用时加载
 		size_t file_size = 0;
+#ifdef _WIN32
 		sPrimes = static_cast<uint32_t*>(sMemFile.loadFile(L"primes.dat", file_size));
+#else 
+		sPrimes = static_cast<uint32_t*>(sMemFile.loadFile("primes.dat", file_size));
+#endif
 		if (sPrimes) {
 			primeCount = file_size / sizeof(uint32_t);
 		}

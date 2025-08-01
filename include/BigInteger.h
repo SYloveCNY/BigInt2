@@ -10,7 +10,12 @@
 #endif
 
 #define NOMINMAX
+
+#ifdef _WIN32  // 仅在 Windows 系统下包含
 #include <windows.h>
+#include <winnt.h>
+#endif
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -23,7 +28,6 @@
 #include <fstream>
 #include <cmath>
 #include <filesystem>
-#include <winnt.h>
 #include <limits>
 #include <ranges>
 #include <iomanip>

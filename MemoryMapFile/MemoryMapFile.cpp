@@ -38,6 +38,7 @@ void* MemoryMapFile::loadFile(const FileNameType& fileName, size_t& fileSize) {
 	return mappedAddress;
 	#else
 	// 打开文件
+	// Linux 中 _file_handle 是 int 类型，直接接收 open 的返回值
 	_file_handle = open(fileName.c_str(), O_RDONLY);
 	if (_file_handle == -1) {
 		std::cerr << "Failed to open file on non-Windows." << std::endl;
@@ -70,11 +71,14 @@ void MemoryMapFile::unLoad() {
 		CloseHandle(_file_handle);
 	}
 	#else
-	if (_file_handle != -1) {
-		if (munmap(reinterpret_cast<void*>(_map_handle), _file_handle) == -1) {
-			std::cerr << "Failed to unmap file on non-Windows." << std::endl;
-		}
-		close(_file_handle);
-	}
+	 if (_file_handle != -1) {
+        // 使用保存的映射地址和文件大小解除映射
+        if (munmap(_map_address, _file_size) == -1) {
+            std::cerr << "Failed to unmap file: " << strerror(errno) << std::endl;
+        }
+        close(_file_handle);
+        _file_handle = -1;
+        _map_address = nullptr;
+    }
 	#endif
 }

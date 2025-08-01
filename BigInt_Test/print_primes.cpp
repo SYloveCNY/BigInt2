@@ -13,7 +13,7 @@ static bool isPrime(uint32_t value, const uint32_t* primes, size_t size) noexcep
 			return false;
 		if (value / x < x)
 			break;
-	}
+	// }
 
 	//	std::cout << value << ',';
 	return true;
